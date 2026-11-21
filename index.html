@@ -462,21 +462,22 @@
         </div>
       </section>
 
-      <!-- BAGIAN B: RINCIAN BIAYA PER PELAKSANA -->
+     <!-- BAGIAN B: RINCIAN BIAYA PER PELAKSANA -->
       <section class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-5">
-        <div class="border-b border-slate-100 pb-3 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <span class="text-[11px] font-extrabold uppercase tracking-wider text-emerald-600">Bagian B</span>
-            <h3 class="text-base font-extrabold text-slate-900">Pelaksana, Nomor SPD &amp; Rincian Biaya Perjalanan Dinas</h3>
-            <p class="text-xs text-slate-500">Isi <strong>Nomor SPD &amp; Tanggal SPD</strong> masing-masing pelaksana, pilih <strong>Status Bukti</strong> pada setiap item, dan pastikan total hari Uang Harian tidak melebihi lama perjalanan.</p>
-          </div>
-          <button type="button" onclick="addPelaksanaCard()"
-            class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm transition">
-            + Tambah Pelaksana SPPD
-          </button>
+        <div class="border-b border-slate-100 pb-3">
+          <span class="text-[11px] font-extrabold uppercase tracking-wider text-emerald-600">Bagian B</span>
+          <h3 class="text-base font-extrabold text-slate-900">Pelaksana, Nomor SPD &amp; Rincian Biaya Perjalanan Dinas</h3>
+          <p class="text-xs text-slate-500">Isi <strong>Nomor SPD &amp; Tanggal SPD</strong> masing-masing pelaksana, pilih <strong>Status Bukti</strong> pada setiap item, dan pastikan total hari Uang Harian tidak melebihi lama perjalanan.</p>
         </div>
 
         <div id="pelaksana-list-container" class="space-y-6"></div>
+
+        <div class="pt-2 flex justify-end">
+          <button type="button" onclick="addPelaksanaCard()"
+            class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm transition">
+            + Tambah Pelaksana SPPD
+          </button>
+        </div>
       </section>
 
       <!-- BAGIAN C: PENGATURAN KOLOM NOMINATIF & VALIDASI DUA ARAH -->
