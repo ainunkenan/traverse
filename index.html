@@ -170,6 +170,14 @@
     Konfigurasi Diperlukan: Silakan isi konstanta <code>GAS_API_URL</code> pada file <code>index.html</code> dengan URL Web App (<code>/exec</code>) Google Apps Script Anda.
   </div>
 
+  <!-- LAYAR TRANSISI PEMULIHAN SESI SAAT REFRESH -->
+  <div id="session-restore-screen" class="no-print hidden min-h-screen bg-slate-950 flex items-center justify-center p-4">
+    <div class="text-center space-y-3">
+      <div class="mx-auto w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+      <p class="text-xs font-bold tracking-wider uppercase text-slate-300">Memulihkan Sesi Traverse...</p>
+    </div>
+  </div>
+  
   <!-- ==================== 1. HALAMAN LOGIN (TANPA NAMA SATKER) ==================== -->
   <div id="login-screen" class="no-print min-h-screen bg-slate-950 flex flex-col justify-between">
     <div class="flex-1 flex items-center justify-center p-4">
@@ -883,6 +891,8 @@
       // 1. Cek apakah ada sesi aktif di sessionStorage sebelum menampilkan layar login
       const savedRaw = sessionStorage.getItem("traverse_session_token");
       if (savedRaw) {
+        document.getElementById("login-screen").classList.add("hidden");
+        document.getElementById("session-restore-screen").classList.remove("hidden");
         try {
           const saved = JSON.parse(savedRaw);
           if (saved && saved.nip && saved.token) {
@@ -901,6 +911,7 @@
               pendingResets = resumeRes.pendingResets || [];
 
               applyBrandingToUI();
+              document.getElementById("session-restore-screen").classList.add("hidden");
               initializeAppAfterLogin(false, "");
               return;
             }
@@ -908,10 +919,12 @@
         } catch (e) {
           console.warn("Pemulihan sesi gagal:", e.message);
         }
-        // Hapus token jika sudah kedaluwarsa / tidak valid
+        // Hapus token jika sudah kedaluwarsa / tidak valid, lalu tampilkan form login
         sessionStorage.removeItem("traverse_session_token");
         currentUser = null;
         currentSessionToken = "";
+        document.getElementById("session-restore-screen").classList.add("hidden");
+        document.getElementById("login-screen").classList.remove("hidden");
       }
 
       // 2. Jika belum login, muat ikon publik aplikasi
