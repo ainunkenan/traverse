@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 
-  <style>
+ <style>
     body {
       font-family: 'Plus Jakarta Sans', sans-serif;
       background-color: #f1f5f9;
@@ -68,18 +68,18 @@
     .nominatif-table th,
     .nominatif-table td {
       border: 1px solid #000000;
-      padding: 4px 5px;
+      padding: 4px 6px;
       vertical-align: middle;
     }
     .nominatif-table th {
-      background-color: #e2e8f0;
+      background-color: #ffffff;
       font-weight: bold;
       text-align: center;
     }
 
     @media print {
       @page {
-        margin: 8mm;
+        margin: 10mm;
       }
       body {
         background: #ffffff !important;
@@ -100,7 +100,7 @@
       .doc-sheet {
         box-shadow: none !important;
         margin: 0 !important;
-        padding: 4mm 6mm !important;
+        padding: 3mm 4mm !important;
         width: 100% !important;
         min-height: auto !important;
         page-break-after: always;
@@ -119,7 +119,7 @@
     }
     @page landscapePage {
       size: A4 landscape;
-      margin: 8mm;
+      margin: 10mm 8mm;
     }
     @page portraitPage {
       size: A4 portrait;
@@ -1707,6 +1707,47 @@
       };
     }
 
+   function getNominatifHeaderLabel(cat) {
+      const map = {
+        "Uang Harian": "UANG HARIAN",
+        "Transport PP": "TRANSPORTASI PP",
+        "Darat/Taxi": "TRANSPORTASI DARAT / TAXI",
+        "Penginapan": "PENGINAPAN",
+        "Representasi": "REPRESENTASI",
+        "Lain-lain": "LAIN-LAIN"
+      };
+      return map[cat] || String(cat || "").toUpperCase();
+    }
+
+    function formatRpCell(amount) {
+      const val = Number(amount) || 0;
+      return `<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;white-space:nowrap;"><span>Rp</span><span>${val > 0 ? formatNumber(val) : "-"}</span></div>`;
+    }
+
+    function formatDateRangeIndo(startIso, endIso) {
+      if (!startIso && !endIso) return "-";
+      if (!endIso || startIso === endIso) return formatDateIndo(startIso);
+      const p1 = String(startIso).split("-");
+      const p2 = String(endIso).split("-");
+      if (p1.length !== 3 || p2.length !== 3) {
+        return `${formatDateIndo(startIso)} - ${formatDateIndo(endIso)}`;
+      }
+      const bulan = [
+        "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+        "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+      ];
+      const b1 = bulan[parseInt(p1[1], 10) - 1] || p1[1];
+      const b2 = bulan[parseInt(p2[1], 10) - 1] || p2[1];
+
+      if (p1[0] === p2[0] && p1[1] === p2[1]) {
+        return `${p1[2]} - ${p2[2]} ${b2} ${p2[0]}`;
+      }
+      if (p1[0] === p2[0]) {
+        return `${p1[2]} ${b1} - ${p2[2]} ${b2} ${p2[0]}`;
+      }
+      return `${p1[2]} ${b1} ${p1[0]} - ${p2[2]} ${b2} ${p2[0]}`;
+    }
+
     function renderAllOfficialSheets() {
       const snap = getFormSnapshot();
       const g = snap.general;
@@ -1717,14 +1758,18 @@
       const tglDokIndo = formatDateIndo(g.tglDokumen);
       const tglStIndo = formatDateIndo(g.tglSt);
       const tglSpdIndo = formatDateIndo(g.tglSpd);
-      const tglBerangkatIndo = formatDateIndo(g.tglBerangkat);
-      const tglKembaliIndo = formatDateIndo(g.tglKembali);
+      const rentangTglKegiatan = formatDateRangeIndo(g.tglBerangkat, g.tglKembali);
       const kotaTitimangsa = g.kotaAsal || satkerProfile.kotaKedudukan || "Pamekasan";
+
+      const rawKegiatan = String(g.kegiatan || "").trim();
+      const kegiatanUpper = /^kegiatan\b/i.test(rawKegiatan)
+        ? rawKegiatan.toUpperCase()
+        : "KEGIATAN " + rawKegiatan.toUpperCase();
 
       let html = "";
 
       // =========================================================================
-      // LEMBAR 1: DAFTAR NOMINATIF PERJALANAN DINAS (LANDSCAPE + LOGO KOP KIRI)
+      // LEMBAR 1: DAFTAR NOMINATIF PERJALANAN DINAS (LANDSCAPE SESUAI FORMAT)
       // =========================================================================
       const colTotals = {};
       activeCols.forEach((c) => { colTotals[c] = 0; });
@@ -1748,79 +1793,80 @@
         nomGrandTotal += pRowTotal;
 
         const dynamicCells = activeCols
-          .map((c) => `<td style="text-align:right;">${pCatSum[c] > 0 ? formatNumber(pCatSum[c]) : "-"}</td>`)
+          .map((c) => `<td>${formatRpCell(pCatSum[c])}</td>`)
           .join("");
 
         nomRowsHtml += `
           <tr>
             <td style="text-align:center;">${idx + 1}</td>
-            <td><strong>${escapeHtml(p.nama)}</strong><br/>NIP. ${escapeHtml(p.nip)}</td>
+            <td style="padding:0;vertical-align:middle;">
+              <div style="padding:4px 6px;border-bottom:1px solid #000000;">${escapeHtml(p.nama)}</div>
+              <div style="padding:4px 6px;">${escapeHtml(p.nip)}</div>
+            </td>
             <td style="text-align:center;">${escapeHtml(p.pangkat || "-")}</td>
-            <td>${escapeHtml(p.jabatan || "-")}</td>
-            <td style="text-align:center;">${escapeHtml(g.kotaAsal)} - ${escapeHtml(g.kotaTujuan)}</td>
-            <td style="text-align:center;">${tglBerangkatIndo} s.d.<br/>${tglKembaliIndo}</td>
-            <td style="text-align:center;">${g.lamaHari} hari</td>
+            <td style="text-align:center;">${escapeHtml(p.jabatan || "-")}</td>
+            <td style="text-align:center;">${escapeHtml(g.kotaTujuan || "-")}</td>
+            <td style="text-align:center;">${escapeHtml(rentangTglKegiatan)}</td>
+            <td style="text-align:center;white-space:nowrap;">${g.lamaHari} hari</td>
             ${dynamicCells}
-            <td style="text-align:right;font-weight:bold;">${formatNumber(pRowTotal)}</td>
-            <td></td>
+            <td>${formatRpCell(pRowTotal)}</td>
+            <td style="vertical-align:top;text-align:left;height:46px;padding:4px 6px;">${idx + 1}.</td>
           </tr>
         `;
       });
 
-      const dynamicHeaders = activeCols.map((c) => `<th>${escapeHtml(c)}<br/>(Rp)</th>`).join("");
+      const dynamicHeaders = activeCols.map((c) => `<th>${escapeHtml(getNominatifHeaderLabel(c))}</th>`).join("");
       const dynamicFooterTotals = activeCols
-        .map((c) => `<td style="text-align:right;font-weight:bold;">${formatNumber(colTotals[c])}</td>`)
+        .map((c) => `<td style="font-weight:bold;">${formatRpCell(colTotals[c])}</td>`)
         .join("");
 
       html += `
         <div class="doc-sheet sheet-landscape">
-          <table style="width:100%;border-bottom:2.5px solid #000;padding-bottom:6px;margin-bottom:10px;">
+          <table style="width:100%;margin-bottom:10px;border-collapse:collapse;">
             <tr>
-              ${logoBase64 ? `<td style="width:68px;vertical-align:middle;"><img src="${logoBase64}" style="width:58px;height:58px;object-fit:contain;" /></td>` : ""}
+              ${logoBase64 ? `<td style="width:64px;vertical-align:middle;padding-right:8px;"><img src="${logoBase64}" style="width:54px;height:54px;object-fit:contain;" /></td>` : ""}
               <td style="text-align:left;vertical-align:middle;line-height:1.25;">
-                <div style="font-size:11pt;font-weight:bold;">${escapeHtml(satkerProfile.kopBaris1)}</div>
-                <div style="font-size:11pt;font-weight:bold;">${escapeHtml(satkerProfile.kopBaris2)}</div>
-                <div style="font-size:11pt;font-weight:bold;">${escapeHtml(satkerProfile.kopBaris3)}</div>
-                <div style="font-size:12pt;font-weight:bold;">${escapeHtml(satkerProfile.kopBaris4)}</div>
-                <div style="font-size:9pt;">${escapeHtml(satkerProfile.alamatSatker)} ${escapeHtml(satkerProfile.telpFax)}</div>
+                <div style="font-size:10pt;font-weight:bold;">${escapeHtml(satkerProfile.kopBaris1)}</div>
+                <div style="font-size:10pt;font-weight:bold;">${escapeHtml(satkerProfile.kopBaris2)}</div>
+                <div style="font-size:10pt;font-weight:bold;">${escapeHtml(satkerProfile.kopBaris3)}</div>
+                <div style="font-size:10.5pt;font-weight:bold;">${escapeHtml(satkerProfile.kopBaris4)}</div>
+                <div style="font-size:9pt;">${escapeHtml(satkerProfile.alamatSatker)}</div>
               </td>
             </tr>
           </table>
 
-          <div style="text-align:center;margin-bottom:10px;">
-            <div style="font-size:12pt;font-weight:bold;text-decoration:underline;">DAFTAR NOMINATIF PERJALANAN DINAS</div>
-            <div style="font-size:10pt;margin-top:2px;">Sesuai Surat Tugas Nomor : ${escapeHtml(g.noSt)} Tanggal ${tglStIndo}</div>
-            <div style="font-size:10pt;">Kegiatan : ${escapeHtml(g.kegiatan)}</div>
-            <div style="font-size:10pt;">Kode Mata Anggaran : <strong>${escapeHtml(g.kodeMak)}</strong></div>
+          <div style="text-align:center;margin-bottom:8px;line-height:1.3;">
+            <div style="font-size:11pt;font-weight:bold;">DAFTAR NOMINATIF PERJALANAN DINAS</div>
+            <div style="font-size:10.5pt;font-weight:bold;">${escapeHtml(kegiatanUpper)}</div>
+            <div style="font-size:10pt;font-weight:bold;">SESUAI SURAT PERINTAH NOMOR :${escapeHtml(g.noSt.toUpperCase())} TANGGAL ${escapeHtml(tglStIndo.toUpperCase())}</div>
+          </div>
+
+          <div style="text-align:right;font-size:9.5pt;font-weight:bold;margin-bottom:3px;">
+            MAK : ${escapeHtml(g.kodeMak)}
           </div>
 
           <table class="nominatif-table">
             <thead>
               <tr>
-                <th style="width:26px;">No.</th>
-                <th>Nama / NIP</th>
-                <th>Pangkat / Gol.</th>
-                <th>Jabatan</th>
-                <th>Tujuan</th>
-                <th>Tanggal</th>
-                <th style="width:52px;">Lama</th>
+                <th style="width:26px;">NO</th>
+                <th>NAMA/NIP</th>
+                <th>GOL</th>
+                <th>JABATAN</th>
+                <th>TUJUAN</th>
+                <th>TANGGAL KEGIATAN</th>
+                <th style="width:68px;">LAMA PERJALANAN</th>
                 ${dynamicHeaders}
-                <th>Jumlah<br/>(Rp)</th>
-                <th style="width:65px;">Ket.</th>
+                <th>JUMLAH</th>
+                <th style="width:95px;">TANDA TANGAN</th>
               </tr>
             </thead>
             <tbody>
               ${nomRowsHtml}
-              <tr style="background:#f8fafc;">
-                <td colspan="7" style="text-align:center;font-weight:bold;">JUMLAH TOTAL</td>
-                ${dynamicFooterTotals}
-                <td style="text-align:right;font-weight:bold;">${formatNumber(nomGrandTotal)}</td>
-                <td></td>
-              </tr>
               <tr>
-                <td colspan="${8 + activeCols.length}" style="font-style:italic;padding:5px 8px;">
-                  <strong>Terbilang :</strong> ${terbilangRupiah(nomGrandTotal)}
-                </td>
+                <td colspan="7" style="text-align:center;font-weight:bold;">JUMLAH</td>
+                ${dynamicFooterTotals}
+                <td style="font-weight:bold;">${formatRpCell(nomGrandTotal)}</td>
+                <td></td>
               </tr>
             </tbody>
           </table>
