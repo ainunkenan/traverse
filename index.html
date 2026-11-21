@@ -343,12 +343,12 @@
         </div>
       </div>
 
-      <!-- BAGIAN A: DATA UMUM SPPD -->
+      <!-- BAGIAN A: DATA UMUM KEGIATAN & PEJABAT PENANDATANGAN -->
       <section class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-5">
         <div class="border-b border-slate-100 pb-3 flex items-center justify-between">
           <div>
             <span class="text-[11px] font-extrabold uppercase tracking-wider text-blue-600">Bagian A</span>
-            <h3 class="text-base font-extrabold text-slate-900">Data Umum Surat Tugas, SPD &amp; Pejabat Penandatangan</h3>
+            <h3 class="text-base font-extrabold text-slate-900">Data Umum Surat Tugas, Kegiatan &amp; Pejabat Penandatangan</h3>
           </div>
           <span id="badge-lama-hari" class="px-3 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-xs font-extrabold">
             Lama Perjalanan: 1 Hari
@@ -363,7 +363,7 @@
           </div>
           <div>
             <label class="block text-xs font-bold text-slate-700 mb-1">Tanggal Surat Tugas *</label>
-            <input type="date" id="inp-tgl-st"
+            <input type="date" id="inp-tgl-st" onchange="onChangeTglSt(this.value)"
               class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm focus:border-blue-600 focus:outline-none" />
           </div>
           <div>
@@ -372,25 +372,14 @@
               class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm font-mono-code focus:border-blue-600 focus:outline-none" />
           </div>
 
-          <div>
-            <label class="block text-xs font-bold text-slate-700 mb-1">Nomor SPD *</label>
-            <input type="text" id="inp-no-spd" placeholder="Contoh: WIM.15.IMI.10-PR.04.01/20"
-              class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm focus:border-blue-600 focus:outline-none" />
-          </div>
-          <div>
-            <label class="block text-xs font-bold text-slate-700 mb-1">Tanggal SPD *</label>
-            <input type="date" id="inp-tgl-spd"
+          <div class="md:col-span-2">
+            <label class="block text-xs font-bold text-slate-700 mb-1">Maksud Perjalanan Dinas (Uraian Kegiatan) *</label>
+            <input type="text" id="inp-kegiatan" placeholder="Contoh: Melaksanakan Pendampingan Penyusunan Laporan Kinerja Satuan Kerja"
               class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm focus:border-blue-600 focus:outline-none" />
           </div>
           <div>
             <label class="block text-xs font-bold text-slate-700 mb-1">Tanggal Dokumen / Kuitansi *</label>
             <input type="date" id="inp-tgl-dokumen"
-              class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm focus:border-blue-600 focus:outline-none" />
-          </div>
-
-          <div class="md:col-span-3">
-            <label class="block text-xs font-bold text-slate-700 mb-1">Maksud Perjalanan Dinas (Uraian Kegiatan) *</label>
-            <input type="text" id="inp-kegiatan" placeholder="Contoh: Melaksanakan Pendampingan Penyusunan Laporan Kinerja Satuan Kerja"
               class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm focus:border-blue-600 focus:outline-none" />
           </div>
 
@@ -454,8 +443,8 @@
         <div class="border-b border-slate-100 pb-3 flex flex-wrap items-center justify-between gap-3">
           <div>
             <span class="text-[11px] font-extrabold uppercase tracking-wider text-emerald-600">Bagian B</span>
-            <h3 class="text-base font-extrabold text-slate-900">Pelaksana &amp; Rincian Biaya Perjalanan Dinas</h3>
-            <p class="text-xs text-slate-500">Pastikan <strong>Status Bukti</strong> dipilih pada setiap baris item dan total hari Uang Harian tidak melebihi lama perjalanan.</p>
+            <h3 class="text-base font-extrabold text-slate-900">Pelaksana, Nomor SPD &amp; Rincian Biaya Perjalanan Dinas</h3>
+            <p class="text-xs text-slate-500">Isi <strong>Nomor SPD &amp; Tanggal SPD</strong> masing-masing pelaksana, pilih <strong>Status Bukti</strong> pada setiap item, dan pastikan total hari Uang Harian tidak melebihi lama perjalanan.</p>
           </div>
           <button type="button" onclick="addPelaksanaCard()"
             class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm transition">
@@ -875,7 +864,6 @@
         document.getElementById("api-config-warning").classList.remove("hidden");
       }
 
-      // Muat ikon aplikasi publik saja (tanpa identitas satuan kerja sebelum login)
       try {
         const res = await callGasApi("getPublicBootstrap");
         if (res && res.success) {
@@ -920,7 +908,6 @@
         adminAccounts = res.adminAccounts || [];
         pendingResets = res.pendingResets || [];
 
-        // Simpan hanya token sesi sementara (bukan password asli)
         sessionStorage.setItem("traverse_session_token", JSON.stringify({
           nip: currentUser.nip,
           token: currentSessionToken
@@ -1132,7 +1119,7 @@
     }
 
     /**
-     * PERHITUNGAN LAMA PERJALANAN & SATUAN VOLUME
+     * PERHITUNGAN LAMA PERJALANAN & SINKRONISASI TANGGAL ST -> SPD
      */
     function getTripDurationDays() {
       const s = document.getElementById("inp-tgl-berangkat").value;
@@ -1142,6 +1129,17 @@
       const d2 = new Date(e + "T00:00:00");
       const diff = Math.round((d2 - d1) / (1000 * 60 * 60 * 24)) + 1;
       return diff >= 1 ? diff : 1;
+    }
+
+    function onChangeTglSt(newDate) {
+      if (!newDate) return;
+      pelaksanaList.forEach((p, idx) => {
+        if (!p._tglSpdTouched) {
+          p.tglSpd = newDate;
+          const inp = document.getElementById(`pelaksana-tgl-spd-${idx}`);
+          if (inp) inp.value = newDate;
+        }
+      });
     }
 
     function recalculateTripDays() {
@@ -1167,8 +1165,6 @@
       document.getElementById("inp-no-st").value = "";
       document.getElementById("inp-tgl-st").value = todayIso;
       document.getElementById("inp-kode-mak").value = "";
-      document.getElementById("inp-no-spd").value = "";
-      document.getElementById("inp-tgl-spd").value = todayIso;
       document.getElementById("inp-tgl-dokumen").value = todayIso;
       document.getElementById("inp-kegiatan").value = "";
       document.getElementById("inp-kota-asal").value = satkerProfile.kotaKedudukan || "Pamekasan";
@@ -1183,6 +1179,9 @@
           nama: currentUser ? currentUser.nama : "",
           pangkat: currentUser ? currentUser.pangkat : "",
           jabatan: currentUser ? currentUser.jabatan : "",
+          noSpd: "",
+          tglSpd: todayIso,
+          _tglSpdTouched: false,
           items: [
             { kategori: "Uang Harian", uraian: "Uang Harian Perjalanan Dinas", vol: 1, harga: 0, statusBukti: "" }
           ]
@@ -1212,7 +1211,6 @@
     }
 
     function loadSampleData() {
-      // Pertahankan pilihan PPK & Bendahara yang telah diatur Admin
       const preservedPpk = document.getElementById("sel-ppk").value;
       const preservedBen = document.getElementById("sel-bendahara").value;
 
@@ -1221,8 +1219,6 @@
       document.getElementById("inp-no-st").value = "CONTOH/ST-001/2026";
       document.getElementById("inp-tgl-st").value = "2026-11-06";
       document.getElementById("inp-kode-mak").value = "0000.XXX.001.051.A.524111";
-      document.getElementById("inp-no-spd").value = "CONTOH/SPD-001/2026";
-      document.getElementById("inp-tgl-spd").value = "2026-11-06";
       document.getElementById("inp-tgl-dokumen").value = "2026-11-13";
       document.getElementById("inp-kegiatan").value = "Melaksanakan Contoh Kegiatan Koordinasi dan Konsultasi Perjalanan Dinas Tahun 2026";
       document.getElementById("inp-kota-asal").value = satkerProfile.kotaKedudukan || "Pamekasan";
@@ -1246,10 +1242,13 @@
           nama: "John Doe",
           pangkat: "Golongan Fiktif",
           jabatan: "Karakter Fiktif",
+          noSpd: "CONTOH/SPD-001/2026",
+          tglSpd: "2026-11-06",
+          _tglSpdTouched: true,
           items: [
             { kategori: "Transport PP", uraian: "Transportasi PP Kedudukan - Tujuan (Contoh)", vol: 1, harga: 1500000, statusBukti: "ada bukti" },
             { kategori: "Penginapan", uraian: "Biaya Penginapan / Hotel (2 Malam)", vol: 2, harga: 650000, statusBukti: "ada bukti" },
-            { kategori: "Uang Harian", uraian: "Uang Harian Perjalanan Dinas", vol: 3, harga: 530000, statusBukti: "tidak ada bukti" }
+            { kategori: "Uang Harian", uraian: "Uang Harian Perjalanan Dinas", vol: 3, harga: 530000, statusBukti: "lumpsum" }
           ]
         }
       ];
@@ -1271,11 +1270,15 @@
 
     function addPelaksanaCard() {
       const days = getTripDurationDays();
+      const defaultTglSpd = document.getElementById("inp-tgl-st").value || new Date().toISOString().split("T")[0];
       pelaksanaList.push({
         nip: "",
         nama: "",
         pangkat: "",
         jabatan: "",
+        noSpd: "",
+        tglSpd: defaultTglSpd,
+        _tglSpdTouched: false,
         items: [
           { kategori: "Uang Harian", uraian: "Uang Harian Perjalanan Dinas", vol: days, harga: 0, statusBukti: "" }
         ]
@@ -1458,6 +1461,21 @@
               </div>
             </div>
 
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-blue-50/70 border border-blue-200 rounded-xl p-3">
+              <div>
+                <label class="block text-[11px] font-bold text-blue-900 mb-1">Nomor SPD (Pelaksana ${pIdx + 1}) *</label>
+                <input type="text" value="${escapeAttr(p.noSpd || "")}" placeholder="Contoh: WIM.15.IMI.10-PR.04.01/20"
+                  oninput="pelaksanaList[${pIdx}].noSpd = this.value"
+                  class="w-full rounded-xl border border-blue-300 bg-white px-3 py-2 text-xs font-semibold" />
+              </div>
+              <div>
+                <label class="block text-[11px] font-bold text-blue-900 mb-1">Tanggal SPD (Pelaksana ${pIdx + 1}) *</label>
+                <input type="date" id="pelaksana-tgl-spd-${pIdx}" value="${escapeAttr(p.tglSpd || "")}"
+                  onchange="pelaksanaList[${pIdx}].tglSpd = this.value; pelaksanaList[${pIdx}]._tglSpdTouched = true;"
+                  class="w-full rounded-xl border border-blue-300 bg-white px-3 py-2 text-xs font-semibold" />
+              </div>
+            </div>
+
             <div id="uh-warn-${pIdx}" class="${isUhExceeded ? "" : "hidden "}rounded-xl bg-rose-50 border border-rose-300 px-3.5 py-2.5 text-xs font-bold text-rose-700">
               Peringatan: Total volume Uang Harian (${uhDays} hari) melebihi lama perjalanan dinas (${maxDays} hari).
             </div>
@@ -1581,7 +1599,6 @@
         const pSpan = document.getElementById(`pelaksana-sub-${pIdx}`);
         if (pSpan) pSpan.textContent = formatRp(pTotal);
 
-        // Pembaruan real-time peringatan volume Uang Harian tanpa kehilangan fokus kursor
         const isExceeded = uhDays > maxDays;
         const warnEl = document.getElementById(`uh-warn-${pIdx}`);
         if (warnEl) {
@@ -1658,8 +1675,6 @@
         { id: "inp-no-st", label: "Nomor Surat Tugas (ST)" },
         { id: "inp-tgl-st", label: "Tanggal Surat Tugas" },
         { id: "inp-kode-mak", label: "Kode Mata Anggaran (MAK)" },
-        { id: "inp-no-spd", label: "Nomor SPD" },
-        { id: "inp-tgl-spd", label: "Tanggal SPD" },
         { id: "inp-tgl-dokumen", label: "Tanggal Dokumen / Kuitansi" },
         { id: "inp-kegiatan", label: "Maksud Perjalanan Dinas" },
         { id: "inp-kota-asal", label: "Tempat Berangkat" },
@@ -1683,8 +1698,16 @@
 
       for (let i = 0; i < pelaksanaList.length; i++) {
         const p = pelaksanaList[i];
-        if (!p.nama.trim() || !p.nip.trim()) {
+        if (!String(p.nama || "").trim() || !String(p.nip || "").trim()) {
           if (notifyUser) showToast("Nama dan NIP Pelaksana " + (i + 1) + " wajib diisi.", "error");
+          return false;
+        }
+        if (!String(p.noSpd || "").trim()) {
+          if (notifyUser) showToast("Nomor SPD Pelaksana " + (i + 1) + " wajib diisi.", "error");
+          return false;
+        }
+        if (!String(p.tglSpd || "").trim()) {
+          if (notifyUser) showToast("Tanggal SPD Pelaksana " + (i + 1) + " wajib diisi.", "error");
           return false;
         }
 
@@ -1739,14 +1762,22 @@
       const ppkObj = ppkIdx !== "" ? pejabatData.ppkList[Number(ppkIdx)] : { nama: "", nip: "" };
       const benObj = benIdx !== "" ? pejabatData.bendaharaList[Number(benIdx)] : { nama: "", nip: "" };
 
+      const cleanPelaksana = pelaksanaList.map((p) => ({
+        nip: p.nip,
+        nama: p.nama,
+        pangkat: p.pangkat,
+        jabatan: p.jabatan,
+        noSpd: p.noSpd || "",
+        tglSpd: p.tglSpd || "",
+        items: JSON.parse(JSON.stringify(p.items || []))
+      }));
+
       return {
         draftId: activeDraftId,
         general: {
           noSt: document.getElementById("inp-no-st").value.trim(),
           tglSt: document.getElementById("inp-tgl-st").value,
           kodeMak: document.getElementById("inp-kode-mak").value.trim(),
-          noSpd: document.getElementById("inp-no-spd").value.trim(),
-          tglSpd: document.getElementById("inp-tgl-spd").value,
           tglDokumen: document.getElementById("inp-tgl-dokumen").value,
           kegiatan: document.getElementById("inp-kegiatan").value.trim(),
           kotaAsal: document.getElementById("inp-kota-asal").value.trim(),
@@ -1760,7 +1791,7 @@
           namaBendahara: benObj ? benObj.nama : "",
           nipBendahara: benObj ? benObj.nip : ""
         },
-        pelaksanaList: JSON.parse(JSON.stringify(pelaksanaList)),
+        pelaksanaList: cleanPelaksana,
         nominatifColumns: Object.assign({}, nominatifColumns)
       };
     }
@@ -1840,7 +1871,6 @@
       const tahunAnggaran = g.tglDokumen ? g.tglDokumen.split("-")[0] : new Date().getFullYear();
       const tglDokIndo = formatDateIndo(g.tglDokumen);
       const tglStIndo = formatDateIndo(g.tglSt);
-      const tglSpdIndo = formatDateIndo(g.tglSpd);
       const rentangTglKegiatan = formatDateRangeIndo(g.tglBerangkat, g.tglKembali);
       const kotaTitimangsa = g.kotaAsal || satkerProfile.kotaKedudukan || "Pamekasan";
 
@@ -1980,10 +2010,12 @@
       `;
 
       // =========================================================================
-      // LEMBAR 2, 3, 4 PER PELAKSANA (PORTRAIT)
+      // LEMBAR 2, 3, 4 PER PELAKSANA (PORTRAIT - MENGGUNAKAN NO & TGL SPD MASING-MASING)
       // =========================================================================
       snap.pelaksanaList.forEach((p) => {
         const pTotal = (p.items || []).reduce((acc, it) => acc + (Number(it.vol) || 0) * (Number(it.harga) || 0), 0);
+        const pNoSpd = p.noSpd || g.noSpd || "";
+        const pTglSpdIndo = formatDateIndo(p.tglSpd || g.tglSpd);
 
         // -----------------------------------------------------------------------
         // LEMBAR 2: KUITANSI / BUKTI PEMBAYARAN (KOP TENGAH TANPA LOGO)
@@ -2029,7 +2061,7 @@
                 <td style="vertical-align:top;padding:4px 0;">:</td>
                 <td style="vertical-align:top;padding:4px 0;text-align:justify;">
                   Biaya Perjalanan Dinas sesuai dengan Surat Tugas No. ${escapeHtml(g.noSt)} Tanggal ${tglStIndo}
-                  dan Surat Perjalanan Dinas (SPD) No. ${escapeHtml(g.noSpd)} Tanggal ${tglSpdIndo}
+                  dan Surat Perjalanan Dinas (SPD) No. ${escapeHtml(pNoSpd)} Tanggal ${pTglSpdIndo}
                   untuk ${escapeHtml(g.kegiatan)}
                 </td>
               </tr>
@@ -2131,8 +2163,8 @@
             </div>
 
             <table style="font-size:10.5pt;margin-bottom:10px;">
-              <tr><td style="width:165px;">Lampiran SPD Nomor</td><td>: <strong>${escapeHtml(g.noSpd)}</strong></td></tr>
-              <tr><td>Tanggal</td><td>: ${tglSpdIndo}</td></tr>
+              <tr><td style="width:165px;">Lampiran SPD Nomor</td><td>: <strong>${escapeHtml(pNoSpd)}</strong></td></tr>
+              <tr><td>Tanggal</td><td>: ${pTglSpdIndo}</td></tr>
             </table>
 
             <table class="official-table">
@@ -2301,7 +2333,7 @@
             </table>
 
             <p style="font-size:11pt;text-align:justify;line-height:1.45;margin-bottom:10px;">
-              Berdasarkan Surat Perjalanan Dinas (SPD) Nomor : ${escapeHtml(g.noSpd)} Tanggal ${tglSpdIndo}, dengan ini kami menyatakan dengan sesungguhnya bahwa:
+              Berdasarkan Surat Perjalanan Dinas (SPD) Nomor : ${escapeHtml(pNoSpd)} Tanggal ${pTglSpdIndo}, dengan ini kami menyatakan dengan sesungguhnya bahwa:
             </p>
             <p style="font-size:11pt;text-align:justify;line-height:1.45;margin-bottom:10px;">
               1. Biaya transport pegawai dan/atau biaya penginapan di bawah ini yang tidak dapat diperoleh bukti-bukti pengeluarannya, meliputi :
@@ -2451,8 +2483,6 @@
       document.getElementById("inp-no-st").value = g.noSt || "";
       document.getElementById("inp-tgl-st").value = g.tglSt || "";
       document.getElementById("inp-kode-mak").value = g.kodeMak || "";
-      document.getElementById("inp-no-spd").value = g.noSpd || "";
-      document.getElementById("inp-tgl-spd").value = g.tglSpd || "";
       document.getElementById("inp-tgl-dokumen").value = g.tglDokumen || "";
       document.getElementById("inp-kegiatan").value = g.kegiatan || "";
       document.getElementById("inp-kota-asal").value = g.kotaAsal || "";
@@ -2473,7 +2503,13 @@
         onSelectPejabat("bendahara");
       }
 
-      pelaksanaList = d.pelaksanaList || [];
+      // Kompatibel dengan draft baru (SPD per pelaksana) maupun draft lama (SPD di general)
+      pelaksanaList = (d.pelaksanaList || []).map((p) => ({
+        ...p,
+        noSpd: p.noSpd || g.noSpd || "",
+        tglSpd: p.tglSpd || g.tglSpd || g.tglSt || "",
+        _tglSpdTouched: true
+      }));
       nominatifColumns = Object.assign({}, d.nominatifColumns || nominatifColumns);
 
       recalculateTripDays();
