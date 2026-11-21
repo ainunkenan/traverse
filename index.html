@@ -873,13 +873,48 @@
     }
 
     /**
-     * INISIALISASI HALAMAN SAAT PERTAMA DIBUKA
+     * INISIALISASI HALAMAN SAAT PERTAMA DIBUKA / REFRESH
      */
     window.addEventListener("DOMContentLoaded", async () => {
       if (!GAS_API_URL || GAS_API_URL.includes("GANTI_DENGAN_ID_DEPLOYMENT_ANDA")) {
         document.getElementById("api-config-warning").classList.remove("hidden");
       }
 
+      // 1. Cek apakah ada sesi aktif di sessionStorage sebelum menampilkan layar login
+      const savedRaw = sessionStorage.getItem("traverse_session_token");
+      if (savedRaw) {
+        try {
+          const saved = JSON.parse(savedRaw);
+          if (saved && saved.nip && saved.token) {
+            currentUser = { nip: saved.nip };
+            currentSessionToken = saved.token;
+
+            const resumeRes = await callGasApi("resumeSession");
+            if (resumeRes && resumeRes.success) {
+              currentUser = resumeRes.user;
+              satkerProfile = Object.assign(satkerProfile, resumeRes.satkerProfile || {});
+              logoBase64 = resumeRes.logoBase64 || "";
+              appLogoBase64 = resumeRes.appLogoBase64 || "";
+              pejabatData = resumeRes.pejabat || { ppkList: [], bendaharaList: [] };
+              pegawaiDirectory = resumeRes.pegawaiList || [];
+              adminAccounts = resumeRes.adminAccounts || [];
+              pendingResets = resumeRes.pendingResets || [];
+
+              applyBrandingToUI();
+              initializeAppAfterLogin(false, "");
+              return;
+            }
+          }
+        } catch (e) {
+          console.warn("Pemulihan sesi gagal:", e.message);
+        }
+        // Hapus token jika sudah kedaluwarsa / tidak valid
+        sessionStorage.removeItem("traverse_session_token");
+        currentUser = null;
+        currentSessionToken = "";
+      }
+
+      // 2. Jika belum login, muat ikon publik aplikasi
       try {
         const res = await callGasApi("getPublicBootstrap");
         if (res && res.success) {
