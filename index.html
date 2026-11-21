@@ -1,16 +1,2779 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TRAVERSE</title>
-  <script>
-    // Ganti tautan di bawah ini dengan URL Web App (/exec) Google Apps Script Anda
-    const TARGET_URL = "https://script.google.com/macros/s/AKfycbwsxiiQyKSwUHKHemYQAchA222E1Y7VXgI9hS8-aGhhtSxFHLJ6C9qmqtkvC9mDjkvKQg/exec";
-    window.location.replace(TARGET_URL);
-  </script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TRAVERSE — Every Mile Accounted For.</title>
+  <!-- Dynamic Favicon (Otomatis diperbarui dari Logo Aplikasi TRAVERSE) -->
+  <link id="dynamic-favicon" rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23059669'/%3E%3Cpath d='M18 22l10-4 8 4 10-4v24l-10 4-8-4-10 4V22zm10-4v24m8-20v24' stroke='%23ffffff' stroke-width='4' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: #f1f5f9;
+      color: #0f172a;
+    }
+    .font-mono-code {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Gaya Lembar Dokumen Resmi PDF */
+    .doc-sheet {
+      background: #ffffff;
+      color: #000000;
+      font-family: "Times New Roman", Times, serif;
+      box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.14);
+      margin: 0 auto 28px auto;
+      box-sizing: border-box;
+    }
+    .sheet-landscape {
+      width: 297mm;
+      min-height: 205mm;
+      padding: 12mm 14mm;
+    }
+    .sheet-portrait {
+      width: 210mm;
+      min-height: 292mm;
+      padding: 14mm 16mm;
+    }
+
+    .official-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 10.5pt;
+    }
+    .official-table th,
+    .official-table td {
+      border: 1px solid #000000;
+      padding: 4px 6px;
+      vertical-align: top;
+    }
+    .official-table th {
+      background-color: #e2e8f0;
+      font-weight: bold;
+      text-align: center;
+    }
+
+    .nominatif-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 8.5pt;
+    }
+    .nominatif-table th,
+    .nominatif-table td {
+      border: 1px solid #000000;
+      padding: 4px 5px;
+      vertical-align: middle;
+    }
+    .nominatif-table th {
+      background-color: #e2e8f0;
+      font-weight: bold;
+      text-align: center;
+    }
+
+    @media print {
+      @page {
+        margin: 8mm;
+      }
+      body {
+        background: #ffffff !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+      .no-print {
+        display: none !important;
+      }
+      #app-shell {
+        display: block !important;
+      }
+      #preview-container {
+        padding: 0 !important;
+        margin: 0 !important;
+        background: #ffffff !important;
+      }
+      .doc-sheet {
+        box-shadow: none !important;
+        margin: 0 !important;
+        padding: 4mm 6mm !important;
+        width: 100% !important;
+        min-height: auto !important;
+        page-break-after: always;
+        break-after: page;
+      }
+      .doc-sheet:last-child {
+        page-break-after: auto;
+        break-after: auto;
+      }
+      .sheet-landscape {
+        page: landscapePage;
+      }
+      .sheet-portrait {
+        page: portraitPage;
+      }
+    }
+    @page landscapePage {
+      size: A4 landscape;
+      margin: 8mm;
+    }
+    @page portraitPage {
+      size: A4 portrait;
+      margin: 10mm 12mm;
+    }
+  </style>
 </head>
-<body style="font-family:sans-serif;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;background:#0f172a;color:#f8fafc;">
-  <p>Membuka <strong>TRAVERSE</strong>...</p>
+<body class="min-h-screen">
+
+  <!-- TOAST NOTIFICATION -->
+  <div id="toast-box" class="no-print fixed top-5 right-5 z-50 hidden max-w-md rounded-xl px-4 py-3.5 text-sm font-semibold text-white shadow-2xl transition-all"></div>
+
+  <!-- BANNER PERINGATAN JIKA URL API BELUM DIISI -->
+  <div id="api-config-warning" class="no-print hidden bg-amber-600 text-white px-4 py-2.5 text-center text-xs font-semibold">
+    Konfigurasi Diperlukan: Silakan isi konstanta <code>GAS_API_URL</code> pada file <code>index.html</code> dengan URL Web App (<code>/exec</code>) Google Apps Script Anda.
+  </div>
+
+  <!-- ==================== 1. HALAMAN LOGIN (TANPA NAMA SATKER) ==================== -->
+  <div id="login-screen" class="no-print min-h-screen bg-slate-950 flex flex-col justify-between">
+    <div class="flex-1 flex items-center justify-center p-4">
+      <div class="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden border border-slate-800">
+        <div class="bg-slate-900 px-8 py-8 text-center text-white">
+          <div id="login-logo-wrap" class="mx-auto mb-3.5 w-16 h-16 rounded-2xl bg-emerald-600 flex items-center justify-center shadow-lg overflow-hidden">
+            <svg class="w-9 h-9 text-white" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+            </svg>
+          </div>
+          <h1 class="text-2xl font-extrabold tracking-widest">TRAVERSE</h1>
+          <p class="text-xs italic text-emerald-400 font-medium mt-1">Every Mile Accounted For.</p>
+        </div>
+
+        <!-- Form mendukung Google Password Manager / Autofill Browser -->
+        <form id="login-form" method="post" autocomplete="on" class="p-7 space-y-5">
+          <div id="login-error-box" class="hidden rounded-xl bg-rose-50 border border-rose-200 p-3.5 text-xs text-rose-700 font-medium leading-relaxed"></div>
+
+          <div>
+            <label for="login-nip" class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5">NIP (18 Digit)</label>
+            <input type="text" id="login-nip" name="username" autocomplete="username" maxlength="18" inputmode="numeric" required
+              placeholder="Masukkan 18 digit NIP"
+              class="w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm font-mono-code font-semibold text-slate-900 focus:border-emerald-600 focus:bg-white focus:outline-none" />
+          </div>
+
+          <div>
+            <div class="flex items-center justify-between mb-1.5">
+              <label for="login-password" class="block text-xs font-bold text-slate-700 uppercase tracking-wide">Password</label>
+              <button type="button" onclick="openResetPasswordModal()" class="text-xs font-semibold text-emerald-700 hover:underline">
+                Lupa Password / Akun Terkunci?
+              </button>
+            </div>
+            <div class="relative">
+              <input type="password" id="login-password" name="password" autocomplete="current-password" required
+                placeholder="Masukkan password Anda"
+                class="w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 pr-16 text-sm font-semibold text-slate-900 focus:border-emerald-600 focus:bg-white focus:outline-none" />
+              <button type="button" onclick="togglePasswordVisibility('login-password', this)"
+                class="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-bold text-slate-500 hover:text-slate-800">
+                Lihat
+              </button>
+            </div>
+          </div>
+
+          <button type="submit" id="btn-login-submit"
+            class="w-full rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold py-3.5 text-sm shadow-md transition flex items-center justify-center gap-2">
+            <span>Masuk ke Traverse</span>
+          </button>
+
+          <p class="text-[11px] text-center text-slate-500 leading-relaxed">
+            Login pertama kali menggunakan password standar dari Admin Keuangan dan wajib langsung diganti menjadi password pribadi (minimal 8 karakter).
+          </p>
+        </form>
+      </div>
+    </div>
+
+    <!-- FOOTER COPYRIGHT HALAMAN LOGIN -->
+    <footer class="no-print bg-slate-950 border-t border-slate-900 py-4 text-center">
+      <p class="text-xs font-semibold tracking-wide text-slate-300">
+        &copy; <a href="https://www.instagram.com/ainunkenan/" target="_blank" rel="noopener noreferrer" class="hover:text-emerald-400 transition-colors">@ainunkenan</a>
+      </p>
+    </footer>
+  </div>
+
+  <!-- MODAL LUPA PASSWORD / AKUN TERKUNCI -->
+  <div id="modal-reset-password" class="no-print fixed inset-0 z-50 hidden bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+      <h3 class="text-lg font-extrabold text-slate-900">Permintaan Reset Password &amp; Buka Kunci</h3>
+      <p class="text-xs text-slate-600 leading-relaxed">
+        Masukkan 18 digit NIP Anda. Permintaan akan diteruskan ke Admin Keuangan untuk membuka kunci akun dan mereset password Anda ke password standar.
+      </p>
+      <div>
+        <label class="block text-xs font-bold text-slate-700 mb-1">NIP (18 Digit)</label>
+        <input type="text" id="reset-req-nip" maxlength="18" inputmode="numeric" placeholder="Masukkan 18 digit NIP"
+          class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm font-mono-code" />
+      </div>
+      <div class="flex justify-end gap-2 pt-2">
+        <button type="button" onclick="closeResetPasswordModal()" class="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100">Batal</button>
+        <button type="button" onclick="submitPasswordResetRequest()" class="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white">Kirim Permintaan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL WAJIB / UBAH PASSWORD -->
+  <div id="modal-change-password" class="no-print fixed inset-0 z-50 hidden bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 id="change-pass-title" class="text-lg font-extrabold text-slate-900">Ubah Password Keamanan</h3>
+        <button type="button" id="btn-close-change-pass" onclick="closeChangePasswordModal()" class="text-slate-400 hover:text-slate-700 text-sm font-bold">✕</button>
+      </div>
+      <p id="change-pass-desc" class="text-xs text-slate-600 leading-relaxed">
+        Gunakan kombinasi minimal 8 karakter (huruf besar, huruf kecil, angka, atau simbol) agar akun Anda terlindungi.
+      </p>
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Password Lama</label>
+          <input type="password" id="cp-old-pass" autocomplete="current-password" class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Password Baru (Minimal 8 Karakter)</label>
+          <input type="password" id="cp-new-pass" autocomplete="new-password" class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Konfirmasi Password Baru</label>
+          <input type="password" id="cp-confirm-pass" autocomplete="new-password" class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm" />
+        </div>
+      </div>
+      <div class="flex justify-end gap-2 pt-2">
+        <button type="button" id="btn-cancel-change-pass" onclick="closeChangePasswordModal()" class="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100">Batal</button>
+        <button type="button" onclick="submitChangePassword()" class="px-5 py-2.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white">Simpan Password Baru</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== 2. APLIKASI UTAMA (SETELAH LOGIN) ==================== -->
+  <div id="app-shell" class="hidden min-h-screen flex flex-col">
+
+    <!-- TOP NAVBAR -->
+    <header class="no-print bg-slate-900 text-white shadow-lg border-b border-slate-800">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex flex-wrap items-center justify-between gap-4">
+        <div class="flex items-center gap-3.5">
+          <div id="nav-logo-wrap" class="w-11 h-11 rounded-xl bg-emerald-600 flex items-center justify-center overflow-hidden shadow">
+            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+            </svg>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="font-extrabold text-lg tracking-wider">TRAVERSE</span>
+              <span class="text-[11px] italic text-emerald-400 hidden sm:inline">Every Mile Accounted For.</span>
+            </div>
+            <p id="nav-satker-name" class="text-xs text-slate-400">-</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <div class="bg-slate-800/90 border border-slate-700 rounded-xl px-3.5 py-2 text-right">
+            <div class="flex items-center justify-end gap-2">
+              <span id="nav-user-name" class="text-xs font-bold text-white">-</span>
+              <span id="nav-user-role" class="text-[10px] font-extrabold px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40">PEGAWAI</span>
+            </div>
+            <p id="nav-user-nip" class="text-[11px] font-mono-code text-slate-400">NIP. -</p>
+          </div>
+          <button type="button" onclick="openChangePasswordModal(false)" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold text-slate-200">Ubah Password</button>
+          <button type="button" onclick="logoutUser()" class="px-3.5 py-2 rounded-xl bg-rose-700 hover:bg-rose-600 text-xs font-bold text-white">Keluar</button>
+        </div>
+      </div>
+
+      <!-- TAB NAVIGATION -->
+      <div class="bg-slate-950/60 border-t border-slate-800">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 py-2.5 flex flex-wrap gap-2">
+          <button type="button" id="tab-btn-input" onclick="switchTab('input')"
+            class="px-4 py-2 rounded-xl text-xs font-bold bg-blue-600 text-white shadow transition">
+            1. Input Data SPPD
+          </button>
+          <button type="button" id="tab-btn-preview" onclick="switchTab('preview')"
+            class="px-4 py-2 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 hover:bg-slate-700 transition">
+            2. Pratinjau &amp; Unduh PDF
+          </button>
+          <button type="button" id="tab-btn-history" onclick="switchTab('history')"
+            class="px-4 py-2 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 hover:bg-slate-700 transition">
+            3. Riwayat / Cetak Ulang <span id="history-count-badge" class="ml-1 px-1.5 py-0.5 rounded-full bg-slate-700 text-[10px]">0/10</span>
+          </button>
+          <button type="button" id="tab-btn-admin" onclick="switchTab('admin')"
+            class="hidden px-4 py-2 rounded-xl text-xs font-bold bg-slate-800 text-amber-300 border border-amber-500/30 hover:bg-slate-700 transition">
+            4. Panel Admin <span id="admin-reset-badge" class="hidden ml-1 px-1.5 py-0.5 rounded-full bg-rose-600 text-white text-[10px]">0</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- ==================== TAB 1: INPUT DATA SPPD ==================== -->
+    <main id="tab-input" class="no-print max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 space-y-6">
+
+      <!-- TOOLBAR SIMULASI & RESET -->
+      <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 class="text-sm font-extrabold text-slate-900">Formulir SPPD Rampung &amp; Pertanggungjawaban Biaya</h2>
+          <p class="text-xs text-slate-500">Lengkapi Bagian A, B, dan C dengan teliti sebelum beralih ke pratinjau cetakan PDF.</p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <button type="button" onclick="loadSampleData()" class="px-3.5 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 text-xs font-bold transition">
+            Isi Contoh Data
+          </button>
+          <button type="button" onclick="resetFormToDefault()" class="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition">
+            Reset Formulir
+          </button>
+        </div>
+      </div>
+
+      <!-- BAGIAN A: DATA UMUM SPPD -->
+      <section class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-5">
+        <div class="border-b border-slate-100 pb-3 flex items-center justify-between">
+          <div>
+            <span class="text-[11px] font-extrabold uppercase tracking-wider text-blue-600">Bagian A</span>
+            <h3 class="text-base font-extrabold text-slate-900">Data Umum Surat Tugas, SPD &amp; Pejabat Penandatangan</h3>
+          </div>
+          <span id="badge-lama-hari" class="px-3 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200 text-xs font-extrabold">
+            Lama Perjalanan: 1 Hari
+          </span>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Nomor Surat Tugas (ST) *</label>
+            <input type="text" id="inp-no-st" placeholder="Contoh: WIM.15.IMI.10-PR.04.01/19"
+              class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm focus:border-blue-600 focus:outline-none" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Tanggal Surat Tugas *</label>
+            <input type="date" id="inp-tgl-st"
+              class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm focus:border-blue-600 focus:outline-none" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Kode Mata Anggaran (MAK) *</label>
+            <input type="text" id="inp-kode-mak" placeholder="Contoh: 6163.EBD.001.051.A.524111"
+              class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm font-mono-code focus:border-blue-600 focus:outline-none" />
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Nomor SPD *</label>
+            <input type="text" id="inp-no-spd" placeholder="Contoh: WIM.15.IMI.10-PR.04.01/20"
+              class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm focus:border-blue-600 focus:outline-none" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Tanggal SPD *</label>
+            <input type="date" id="inp-tgl-spd"
+              class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm focus:border-blue-600 focus:outline-none" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Tanggal Dokumen / Kuitansi *</label>
+            <input type="date" id="inp-tgl-dokumen"
+              class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm focus:border-blue-600 focus:outline-none" />
+          </div>
+
+          <div class="md:col-span-3">
+            <label class="block text-xs font-bold text-slate-700 mb-1">Maksud Perjalanan Dinas (Uraian Kegiatan) *</label>
+            <input type="text" id="inp-kegiatan" placeholder="Contoh: Melaksanakan Pendampingan Penyusunan Laporan Kinerja Satuan Kerja"
+              class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm focus:border-blue-600 focus:outline-none" />
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Tempat Berangkat *</label>
+            <input type="text" id="inp-kota-asal" value="Pamekasan"
+              class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm focus:border-blue-600 focus:outline-none" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Tempat Tujuan *</label>
+            <input type="text" id="inp-kota-tujuan" placeholder="Contoh: Jakarta Pusat"
+              class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm focus:border-blue-600 focus:outline-none" />
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Tgl Berangkat *</label>
+              <input type="date" id="inp-tgl-berangkat" onchange="recalculateTripDays()"
+                class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:border-blue-600 focus:outline-none" />
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Tgl Kembali *</label>
+              <input type="date" id="inp-tgl-kembali" onchange="recalculateTripDays()"
+                class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm focus:border-blue-600 focus:outline-none" />
+            </div>
+          </div>
+
+          <!-- PEJABAT PEMBUAT KOMITMEN (PPK) -->
+          <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5">
+            <label class="block text-xs font-bold text-slate-700 mb-1">Pejabat Pembuat Komitmen (PPK) *</label>
+            <select id="sel-ppk" onchange="onSelectPejabat('ppk')"
+              class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold mb-2">
+              <option value="">-- Pilih PPK --</option>
+            </select>
+            <input type="text" id="inp-nip-ppk" readonly placeholder="NIP PPK otomatis terisi"
+              class="w-full rounded-lg border border-slate-200 bg-slate-100 px-3 py-1.5 text-xs font-mono-code text-slate-600" />
+          </div>
+
+          <!-- BENDAHARA PENGELUARAN -->
+          <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5">
+            <label class="block text-xs font-bold text-slate-700 mb-1">Bendahara Pengeluaran *</label>
+            <select id="sel-bendahara" onchange="onSelectPejabat('bendahara')"
+              class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold mb-2">
+              <option value="">-- Pilih Bendahara --</option>
+            </select>
+            <input type="text" id="inp-nip-bendahara" readonly placeholder="NIP Bendahara otomatis terisi"
+              class="w-full rounded-lg border border-slate-200 bg-slate-100 px-3 py-1.5 text-xs font-mono-code text-slate-600" />
+          </div>
+
+          <!-- NOMOR BUKTI KUITANSI (OPSIONAL) -->
+          <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5">
+            <label class="block text-xs font-bold text-slate-700 mb-1">Nomor Bukti Kuitansi (Opsional)</label>
+            <input type="text" id="inp-no-bukti" placeholder="Kosongkan jika diisi manual saat cetak"
+              class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs mb-2" />
+            <p class="text-[11px] text-slate-500">Nomor urut kas/SPJ pada pojok kanan atas Kuitansi.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- BAGIAN B: RINCIAN BIAYA PER PELAKSANA -->
+      <section class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-5">
+        <div class="border-b border-slate-100 pb-3 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <span class="text-[11px] font-extrabold uppercase tracking-wider text-emerald-600">Bagian B</span>
+            <h3 class="text-base font-extrabold text-slate-900">Pelaksana &amp; Rincian Biaya Perjalanan Dinas</h3>
+            <p class="text-xs text-slate-500">Pastikan <strong>Status Bukti</strong> dipilih pada setiap baris item dan total hari Uang Harian tidak melebihi lama perjalanan.</p>
+          </div>
+          <button type="button" onclick="addPelaksanaCard()"
+            class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm transition">
+            + Tambah Pelaksana SPPD
+          </button>
+        </div>
+
+        <div id="pelaksana-list-container" class="space-y-6"></div>
+      </section>
+
+      <!-- BAGIAN C: PENGATURAN KOLOM NOMINATIF & VALIDASI DUA ARAH -->
+      <section class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
+        <div class="border-b border-slate-100 pb-3 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <span class="text-[11px] font-extrabold uppercase tracking-wider text-purple-600">Bagian C</span>
+            <h3 class="text-base font-extrabold text-slate-900">Pengaturan Kolom Daftar Nominatif</h3>
+            <p class="text-xs text-slate-500">Centang kategori biaya yang akan ditampilkan sebagai kolom pada Lembar Daftar Nominatif.</p>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button type="button" id="btn-fix-check-filled" onclick="autoFixNominatifColumns('checkFilled')"
+              class="hidden px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold">
+              Centang Kolom Terisi
+            </button>
+            <button type="button" id="btn-fix-uncheck-empty" onclick="autoFixNominatifColumns('uncheckEmpty')"
+              class="hidden px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold">
+              Hapus Centang Kolom Kosong
+            </button>
+          </div>
+        </div>
+
+        <div id="section-c-error-banner" class="hidden rounded-xl bg-rose-50 border border-rose-300 p-3.5 text-xs text-rose-800 font-semibold"></div>
+
+        <div id="nominatif-columns-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3"></div>
+      </section>
+
+      <!-- FOOTER ACTION BAR -->
+      <div class="bg-slate-900 text-white rounded-2xl p-4 shadow-lg flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <span class="text-xs text-slate-400">Total Keseluruhan Pertanggungjawaban</span>
+          <p id="footer-grand-total" class="text-xl font-extrabold text-emerald-400">Rp 0</p>
+        </div>
+        <button type="button" onclick="proceedToPreview()"
+          class="px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-extrabold shadow-lg transition">
+          Validasi &amp; Lanjut Pratinjau PDF &rarr;
+        </button>
+      </div>
+    </main>
+
+    <!-- ==================== TAB 2: PRATINJAU & UNDUH PDF ==================== -->
+    <main id="tab-preview" class="hidden flex-1 flex flex-col">
+      <div class="no-print bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3">
+          <button type="button" onclick="switchTab('input')"
+            class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold">
+            &larr; Kembali Ubah Data
+          </button>
+          <div class="flex flex-wrap items-center gap-2.5">
+            <button type="button" id="btn-save-draft" onclick="saveCurrentDraftToServer()"
+              class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow">
+              Simpan ke Riwayat &amp; Rekap
+            </button>
+            <button type="button" onclick="window.print()"
+              class="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-extrabold shadow">
+              Cetak / Simpan PDF
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div id="preview-container" class="flex-1 bg-slate-200/80 py-8 px-4 overflow-x-auto"></div>
+    </main>
+
+    <!-- ==================== TAB 3: RIWAYAT / CETAK ULANG ==================== -->
+    <main id="tab-history" class="no-print hidden max-w-6xl w-full mx-auto px-4 sm:px-6 py-6 space-y-5">
+      <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 class="text-base font-extrabold text-slate-900">Riwayat SPPD Tersimpan (Maksimal 10 Dokumen Terakhir)</h2>
+          <p class="text-xs text-slate-500">Anda dapat memuat kembali dokumen yang pernah disimpan untuk dicetak ulang atau diperbarui.</p>
+        </div>
+        <button type="button" onclick="refreshUserDrafts()" class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700">
+          Muat Ulang Daftar
+        </button>
+      </div>
+
+      <div id="history-list-box" class="space-y-3"></div>
+    </main>
+
+    <!-- ==================== TAB 4: PANEL ADMIN ==================== -->
+    <main id="tab-admin" class="no-print hidden max-w-6xl w-full mx-auto px-4 sm:px-6 py-6 space-y-6">
+
+      <!-- KARTU 1: PROFIL SATKER & LOGO -->
+      <section class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-5">
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
+          <div>
+            <h3 class="text-base font-extrabold text-slate-900">1. Pengaturan Logo Aplikasi, Kop Surat &amp; Kota Kedudukan</h3>
+            <p class="text-xs text-slate-500">Susunan kop surat dan kota kedudukan (titimangsa) otomatis tampil pada cetakan PDF.</p>
+          </div>
+          <button type="button" id="btn-admin-save-profile" onclick="saveProfileAndLogosFromAdmin()"
+            class="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-extrabold shadow">
+            Simpan Profil &amp; Logo
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <!-- LOGO APLIKASI & FAVICON -->
+          <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 flex items-center gap-4">
+            <div id="admin-preview-applogo" class="w-16 h-16 rounded-xl bg-slate-800 text-white flex items-center justify-center text-xs font-bold overflow-hidden shrink-0">Default</div>
+            <div class="space-y-1.5 text-xs">
+              <p class="font-bold text-slate-800">Logo Aplikasi TRAVERSE (Login, Header &amp; Ikon Tab)</p>
+              <input type="file" accept="image/*" onchange="handleLogoUpload(event, 'appLogo')" class="block text-xs text-slate-600" />
+              <button type="button" onclick="resetAdminLogo('appLogo')" class="text-rose-600 font-bold hover:underline">Reset ke Logo Bawaan</button>
+            </div>
+          </div>
+
+          <!-- LOGO KOP SURAT PDF -->
+          <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 flex items-center gap-4">
+            <div id="admin-preview-koplogo" class="w-16 h-16 rounded-xl bg-white border border-slate-300 text-slate-400 flex items-center justify-center text-xs font-bold overflow-hidden shrink-0">Logo Kop</div>
+            <div class="space-y-1.5 text-xs">
+              <p class="font-bold text-slate-800">Logo Kop Surat PDF (Pengayoman / Kemenimipas)</p>
+              <input type="file" accept="image/*" onchange="handleLogoUpload(event, 'kopLogo')" class="block text-xs text-slate-600" />
+              <button type="button" onclick="resetAdminLogo('kopLogo')" class="text-rose-600 font-bold hover:underline">Hapus Logo Kop</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Kop Baris 1 (Kementerian)</label>
+            <input type="text" id="adm-kop-1" class="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-sm" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Kop Baris 2 (Unit Eselon I)</label>
+            <input type="text" id="adm-kop-2" class="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-sm" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Kop Baris 3 (Kantor Wilayah)</label>
+            <input type="text" id="adm-kop-3" class="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-sm" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Kop Baris 4 (Nama Satuan Kerja Kapital)</label>
+            <input type="text" id="adm-kop-4" class="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-sm" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Nama Resmi Satker (Untuk Kuitansi &amp; Header)</label>
+            <input type="text" id="adm-nama-satker" class="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-sm" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Kota Kedudukan (Titimangsa Tanda Tangan)</label>
+            <input type="text" id="adm-kota" class="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-sm" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Alamat Lengkap Satker</label>
+            <input type="text" id="adm-alamat" class="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-sm" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Telepon / Faksimile (Muncul di Kop)</label>
+            <input type="text" id="adm-telp" class="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-sm" />
+          </div>
+        </div>
+      </section>
+
+      <!-- KARTU 2: PEJABAT PENANDATANGAN -->
+      <section class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-5">
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
+          <div>
+            <h3 class="text-base font-extrabold text-slate-900">2. Pejabat Penandatangan (PPK &amp; Bendahara Pengeluaran)</h3>
+            <p class="text-xs text-slate-500">Daftar ini otomatis muncul pada pilihan dropdown formulir SPPD.</p>
+          </div>
+          <button type="button" onclick="savePejabatFromAdmin()"
+            class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold shadow">
+            Simpan Daftar Pejabat
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div class="bg-blue-50/60 border border-blue-200 rounded-xl p-4 space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-extrabold text-blue-900">Pejabat Pembuat Komitmen (PPK)</span>
+              <button type="button" onclick="addAdminPejabatRow('ppk')" class="px-3 py-1 rounded-lg bg-blue-600 text-white text-xs font-bold">+ PPK</button>
+            </div>
+            <div id="admin-ppk-list" class="space-y-2.5"></div>
+          </div>
+
+          <div class="bg-emerald-50/60 border border-emerald-200 rounded-xl p-4 space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-extrabold text-emerald-900">Bendahara Pengeluaran</span>
+              <button type="button" onclick="addAdminPejabatRow('bendahara')" class="px-3 py-1 rounded-lg bg-emerald-600 text-white text-xs font-bold">+ Bendahara</button>
+            </div>
+            <div id="admin-bendahara-list" class="space-y-2.5"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- KARTU 3: DATABASE PEGAWAI (EXCEL / CSV) -->
+      <section class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
+          <div>
+            <h3 class="text-base font-extrabold text-slate-900">3. Unggah Massal Database Pegawai (Excel / CSV)</h3>
+            <p class="text-xs text-slate-500">Perbarui data pegawai mutasi atau kenaikan pangkat tanpa menghapus password terenkripsi pegawai lama.</p>
+          </div>
+          <button type="button" onclick="downloadPegawaiExcelTemplate()"
+            class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold shadow">
+            Unduh Template Excel (.xlsx)
+          </button>
+        </div>
+
+        <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-wrap items-center justify-between gap-4">
+          <div class="text-xs text-slate-600 space-y-1">
+            <p class="font-bold text-slate-800">Unggah File Pembaruan Pegawai (.xlsx / .csv):</p>
+            <p>Pegawai baru otomatis dibuatkan password standar terenkripsi SHA-256, sedangkan password pegawai lama tetap terjaga.</p>
+          </div>
+          <input type="file" accept=".xlsx,.xls,.csv" onchange="handlePegawaiBatchUpload(event)" class="text-xs text-slate-700" />
+        </div>
+      </section>
+
+      <!-- KARTU 4: KEAMANAN AKUN, BUKA KUNCI & RESET PASSWORD DARURAT -->
+      <section class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-5">
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
+          <div>
+            <h3 class="text-base font-extrabold text-slate-900">4. Manajemen Keamanan Akun, Buka Kunci &amp; Reset Password Darurat</h3>
+            <p class="text-xs text-slate-500">Akun yang salah password 5x otomatis berstatus <strong>TERKUNCI</strong>. Gunakan tombol Reset Darurat untuk membuka kunci dan mengembalikan ke password standar.</p>
+          </div>
+          <button type="button" onclick="refreshAdminAccountsAndResets()" class="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700">Segarkan Data Akun</button>
+        </div>
+
+        <!-- ANTREAN PERMINTAAN RESET -->
+        <div class="space-y-2">
+          <h4 class="text-xs font-extrabold uppercase tracking-wide text-amber-800">Antrean Permintaan Reset dari Pegawai</h4>
+          <div id="admin-reset-list" class="space-y-2"></div>
+        </div>
+
+        <!-- DAFTAR SELURUH AKUN PEGAWAI & RESET DARURAT -->
+        <div class="space-y-2.5 pt-2 border-t border-slate-100">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <h4 class="text-xs font-extrabold uppercase tracking-wide text-slate-700">Daftar Akun Pegawai &amp; Tindakan Darurat</h4>
+            <input type="text" id="admin-account-search" oninput="renderAdminAccountsTable()" placeholder="Cari nama atau NIP pegawai..."
+              class="rounded-xl border border-slate-300 px-3 py-1.5 text-xs w-64" />
+          </div>
+          <div class="overflow-x-auto border border-slate-200 rounded-xl">
+            <table class="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr class="bg-slate-100 text-slate-700 font-extrabold uppercase text-[11px]">
+                  <th class="p-2.5">NIP</th>
+                  <th class="p-2.5">Nama Lengkap</th>
+                  <th class="p-2.5">Role</th>
+                  <th class="p-2.5">Status Akun</th>
+                  <th class="p-2.5 text-right">Tindakan Admin</th>
+                </tr>
+              </thead>
+              <tbody id="admin-accounts-tbody" class="divide-y divide-slate-100"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- FOOTER COPYRIGHT APLIKASI -->
+    <footer class="no-print mt-auto bg-slate-950 border-t border-slate-800 py-4 text-center">
+      <p class="text-xs font-semibold tracking-wide text-slate-300">
+        &copy; <a href="https://www.instagram.com/ainunkenan/" target="_blank" rel="noopener noreferrer" class="hover:text-emerald-400 transition-colors">@ainunkenan</a>
+      </p>
+    </footer>
+
+  </div>
+
+  <!-- ==================== JAVASCRIPT APLIKASI ==================== -->
+  <script>
+    /**
+     * ========================================================================
+     * KONFIGURASI UTAMA API GOOGLE APPS SCRIPT
+     * Ganti nilai konstanta di bawah ini dengan URL Web App (/exec) Anda!
+     * ========================================================================
+     */
+    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbwsxiiQyKSwUHKHemYQAchA222E1Y7VXgI9hS8-aGhhtSxFHLJ6C9qmqtkvC9mDjkvKQg/exec";
+
+    // STATE GLOBAL APLIKASI
+    let currentUser = null;
+    let currentSessionToken = "";
+    let satkerProfile = {
+      kopBaris1: "KEMENTERIAN IMIGRASI DAN PEMASYARAKATAN RI",
+      kopBaris2: "DIREKTORAT JENDERAL IMIGRASI",
+      kopBaris3: "KANTOR WILAYAH JAWA TIMUR",
+      kopBaris4: "KANTOR IMIGRASI KELAS II NON TPI PAMEKASAN",
+      namaSatker: "Kantor Imigrasi Kelas II Non TPI Pamekasan",
+      alamatSatker: "Jl. Panglegur No 14, Tlanakan, Pamekasan",
+      telpFax: "Telp. 0324-336978 Fax. 0324-3515188",
+      kotaKedudukan: "Pamekasan"
+    };
+    let logoBase64 = "";
+    let appLogoBase64 = "";
+    let pejabatData = { ppkList: [], bendaharaList: [] };
+    let pegawaiDirectory = [];
+    let userDrafts = [];
+    let adminAccounts = [];
+    let pendingResets = [];
+    let activeDraftId = "";
+
+    const EXPENSE_CATEGORIES = [
+      "Uang Harian",
+      "Transport PP",
+      "Darat/Taxi",
+      "Penginapan",
+      "Representasi",
+      "Lain-lain"
+    ];
+
+    let pelaksanaList = [];
+    let nominatifColumns = {
+      "Uang Harian": true,
+      "Transport PP": true,
+      "Darat/Taxi": false,
+      "Penginapan": false,
+      "Representasi": false,
+      "Lain-lain": false
+    };
+
+    /**
+     * HELPER KOMUNIKASI API KE GOOGLE APPS SCRIPT (MENGGUNAKAN TOKEN SESI)
+     */
+    async function callGasApi(action, payload = {}) {
+      if (!GAS_API_URL || GAS_API_URL.includes("GANTI_DENGAN_ID_DEPLOYMENT_ANDA")) {
+        throw new Error("Konstanta GAS_API_URL pada file index.html belum diisi dengan URL Web App (/exec) Anda.");
+      }
+
+      const bodyPayload = {
+        action: action,
+        payload: payload,
+        auth: {
+          nip: currentUser ? currentUser.nip : "",
+          token: currentSessionToken || ""
+        }
+      };
+
+      const response = await fetch(GAS_API_URL, {
+        method: "POST",
+        redirect: "follow",
+        headers: {
+          "Content-Type": "text/plain;charset=utf-8"
+        },
+        body: JSON.stringify(bodyPayload)
+      });
+
+      if (!response.ok) {
+        throw new Error("HTTP Error " + response.status + " saat menghubungi server Google Apps Script.");
+      }
+
+      return await response.json();
+    }
+
+    /**
+     * NOTIFIKASI TOAST & FAVICON DINAMIS
+     */
+    function showToast(msg, type = "info") {
+      const box = document.getElementById("toast-box");
+      box.className = "no-print fixed top-5 right-5 z-50 max-w-md rounded-xl px-4 py-3.5 text-sm font-semibold text-white shadow-2xl transition-all";
+      if (type === "error") box.classList.add("bg-rose-700");
+      else if (type === "success") box.classList.add("bg-emerald-700");
+      else box.classList.add("bg-slate-900");
+
+      box.textContent = msg;
+      box.classList.remove("hidden");
+      clearTimeout(window._toastTimer);
+      window._toastTimer = setTimeout(() => {
+        box.classList.add("hidden");
+      }, 4500);
+    }
+
+    function updateFavicon(logoUrl) {
+      const link = document.getElementById("dynamic-favicon");
+      if (!link) return;
+      if (logoUrl) {
+        link.type = "image/png";
+        link.href = logoUrl;
+      } else {
+        link.type = "image/svg+xml";
+        link.href = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23059669'/%3E%3Cpath d='M18 22l10-4 8 4 10-4v24l-10 4-8-4-10 4V22zm10-4v24m8-20v24' stroke='%23ffffff' stroke-width='4' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E";
+      }
+    }
+
+    function applyBrandingToUI() {
+      const navSatker = document.getElementById("nav-satker-name");
+      if (navSatker) navSatker.textContent = satkerProfile.namaSatker || "";
+      const kotaAsal = document.getElementById("inp-kota-asal");
+      if (kotaAsal) kotaAsal.value = satkerProfile.kotaKedudukan || "Pamekasan";
+
+      updateFavicon(appLogoBase64);
+
+      const defaultSvg = `<svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" /></svg>`;
+      const loginWrap = document.getElementById("login-logo-wrap");
+      const navWrap = document.getElementById("nav-logo-wrap");
+
+      if (appLogoBase64) {
+        loginWrap.innerHTML = `<img src="${appLogoBase64}" class="w-full h-full object-contain bg-white p-1" />`;
+        navWrap.innerHTML = `<img src="${appLogoBase64}" class="w-full h-full object-contain bg-white p-0.5" />`;
+      } else {
+        loginWrap.innerHTML = defaultSvg;
+        navWrap.innerHTML = defaultSvg;
+      }
+    }
+
+    function togglePasswordVisibility(inputId, btnEl) {
+      const inp = document.getElementById(inputId);
+      if (!inp) return;
+      if (inp.type === "password") {
+        inp.type = "text";
+        btnEl.textContent = "Sembunyi";
+      } else {
+        inp.type = "password";
+        btnEl.textContent = "Lihat";
+      }
+    }
+
+    /**
+     * INISIALISASI HALAMAN SAAT PERTAMA DIBUKA
+     */
+    window.addEventListener("DOMContentLoaded", async () => {
+      if (!GAS_API_URL || GAS_API_URL.includes("GANTI_DENGAN_ID_DEPLOYMENT_ANDA")) {
+        document.getElementById("api-config-warning").classList.remove("hidden");
+      }
+
+      // Muat ikon aplikasi publik saja (tanpa identitas satuan kerja sebelum login)
+      try {
+        const res = await callGasApi("getPublicBootstrap");
+        if (res && res.success) {
+          appLogoBase64 = res.appLogoBase64 || "";
+          applyBrandingToUI();
+        }
+      } catch (e) {
+        console.warn("Bootstrap awal:", e.message);
+      }
+    });
+
+    /**
+     * LOGIN, LOGOUT & MANAJEMEN PASSWORD
+     */
+    document.getElementById("login-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const nip = document.getElementById("login-nip").value.trim();
+      const password = document.getElementById("login-password").value;
+      await performLogin(nip, password);
+    });
+
+    async function performLogin(nip, password) {
+      const btn = document.getElementById("btn-login-submit");
+      const errBox = document.getElementById("login-error-box");
+      errBox.classList.add("hidden");
+      btn.disabled = true;
+      btn.innerHTML = `<span>Memverifikasi Akses...</span>`;
+
+      try {
+        const res = await callGasApi("verifyLogin", { nip, password });
+        if (!res || !res.success) {
+          throw new Error((res && res.message) || "Gagal masuk ke aplikasi.");
+        }
+
+        currentUser = res.user;
+        currentSessionToken = res.token || "";
+        satkerProfile = Object.assign(satkerProfile, res.satkerProfile || {});
+        logoBase64 = res.logoBase64 || "";
+        appLogoBase64 = res.appLogoBase64 || "";
+        pejabatData = res.pejabat || { ppkList: [], bendaharaList: [] };
+        pegawaiDirectory = res.pegawaiList || [];
+        adminAccounts = res.adminAccounts || [];
+        pendingResets = res.pendingResets || [];
+
+        // Simpan hanya token sesi sementara (bukan password asli)
+        sessionStorage.setItem("traverse_session_token", JSON.stringify({
+          nip: currentUser.nip,
+          token: currentSessionToken
+        }));
+
+        applyBrandingToUI();
+        initializeAppAfterLogin(res.mustChangePassword, password);
+        showToast("Selamat datang, " + currentUser.nama + "!", "success");
+      } catch (err) {
+        errBox.textContent = err.message;
+        errBox.classList.remove("hidden");
+        showToast(err.message, "error");
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<span>Masuk ke Traverse</span>`;
+      }
+    }
+
+    function initializeAppAfterLogin(mustChangePassword, initialPasswordUsed) {
+      document.getElementById("login-screen").classList.add("hidden");
+      document.getElementById("app-shell").classList.remove("hidden");
+
+      document.getElementById("nav-user-name").textContent = currentUser.nama;
+      document.getElementById("nav-user-nip").textContent = "NIP. " + currentUser.nip;
+
+      const roleBadge = document.getElementById("nav-user-role");
+      roleBadge.textContent = currentUser.role;
+      if (currentUser.role === "ADMIN") {
+        roleBadge.className = "text-[10px] font-extrabold px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40";
+        document.getElementById("tab-btn-admin").classList.remove("hidden");
+        populateAdminPanel();
+      } else {
+        roleBadge.className = "text-[10px] font-extrabold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40";
+        document.getElementById("tab-btn-admin").classList.add("hidden");
+      }
+
+      populatePejabatDropdowns();
+      resetFormToDefault();
+      refreshUserDrafts();
+
+      if (mustChangePassword) {
+        openChangePasswordModal(true, initialPasswordUsed);
+      }
+    }
+
+    async function logoutUser() {
+      try {
+        await callGasApi("logoutSession");
+      } catch (e) {}
+      sessionStorage.removeItem("traverse_session_token");
+      currentUser = null;
+      currentSessionToken = "";
+      document.getElementById("login-password").value = "";
+      document.getElementById("app-shell").classList.add("hidden");
+      document.getElementById("login-screen").classList.remove("hidden");
+      switchTab("input");
+    }
+
+    function openResetPasswordModal() {
+      document.getElementById("reset-req-nip").value = document.getElementById("login-nip").value.trim();
+      document.getElementById("modal-reset-password").classList.remove("hidden");
+    }
+
+    function closeResetPasswordModal() {
+      document.getElementById("modal-reset-password").classList.add("hidden");
+    }
+
+    async function submitPasswordResetRequest() {
+      const nip = document.getElementById("reset-req-nip").value.trim();
+      try {
+        const res = await callGasApi("requestPasswordReset", { nip });
+        if (!res.success) throw new Error(res.message);
+        showToast(res.message, "success");
+        closeResetPasswordModal();
+      } catch (err) {
+        showToast(err.message, "error");
+      }
+    }
+
+    function openChangePasswordModal(isMandatory, prefillOldPass = "") {
+      document.getElementById("cp-old-pass").value = isMandatory ? prefillOldPass : "";
+      document.getElementById("cp-new-pass").value = "";
+      document.getElementById("cp-confirm-pass").value = "";
+
+      if (isMandatory) {
+        document.getElementById("change-pass-title").textContent = "Wajib Ganti Password Standar";
+        document.getElementById("change-pass-desc").textContent = "Demi keamanan akun dan data perjalanan dinas, segera buat password pribadi baru minimal 8 karakter sebelum melanjutkan.";
+        document.getElementById("btn-close-change-pass").classList.add("hidden");
+        document.getElementById("btn-cancel-change-pass").classList.add("hidden");
+      } else {
+        document.getElementById("change-pass-title").textContent = "Ubah Password Keamanan";
+        document.getElementById("change-pass-desc").textContent = "Masukkan password lama dan password baru (minimal 8 karakter, kombinasi huruf, angka, atau simbol).";
+        document.getElementById("btn-close-change-pass").classList.remove("hidden");
+        document.getElementById("btn-cancel-change-pass").classList.remove("hidden");
+      }
+      document.getElementById("modal-change-password").classList.remove("hidden");
+    }
+
+    function closeChangePasswordModal() {
+      document.getElementById("modal-change-password").classList.add("hidden");
+    }
+
+    async function submitChangePassword() {
+      const oldPassword = document.getElementById("cp-old-pass").value;
+      const newPassword = document.getElementById("cp-new-pass").value;
+      const confirmPassword = document.getElementById("cp-confirm-pass").value;
+
+      if (newPassword.length < 8) {
+        showToast("Password baru wajib minimal 8 karakter.", "error");
+        return;
+      }
+      if (newPassword !== confirmPassword) {
+        showToast("Konfirmasi password baru tidak cocok.", "error");
+        return;
+      }
+
+      try {
+        const res = await callGasApi("changeUserPassword", { oldPassword, newPassword });
+        if (!res.success) throw new Error(res.message);
+        closeChangePasswordModal();
+        showToast(res.message, "success");
+      } catch (err) {
+        showToast(err.message, "error");
+      }
+    }
+
+    /**
+     * NAVIGASI TAB
+     */
+    function switchTab(tabName) {
+      if (tabName === "preview") {
+        const valid = validateAllBeforePreview(true);
+        if (!valid) return;
+        renderAllOfficialSheets();
+      }
+
+      ["input", "preview", "history", "admin"].forEach((t) => {
+        const panel = document.getElementById("tab-" + t);
+        const btn = document.getElementById("tab-btn-" + t);
+        if (panel) panel.classList.add("hidden");
+        if (btn) {
+          btn.classList.remove("bg-blue-600", "text-white");
+          btn.classList.add("bg-slate-800");
+          if (t === "admin") btn.classList.add("text-amber-300");
+          else btn.classList.add("text-slate-300");
+        }
+      });
+
+      const activePanel = document.getElementById("tab-" + tabName);
+      const activeBtn = document.getElementById("tab-btn-" + tabName);
+      if (activePanel) activePanel.classList.remove("hidden");
+      if (activeBtn) {
+        activeBtn.classList.remove("bg-slate-800", "text-slate-300", "text-amber-300");
+        activeBtn.classList.add("bg-blue-600", "text-white");
+      }
+    }
+
+    function proceedToPreview() {
+      switchTab("preview");
+    }
+
+    /**
+     * DROPDOWN PEJABAT (PPK & BENDAHARA)
+     */
+    function populatePejabatDropdowns() {
+      const selPpk = document.getElementById("sel-ppk");
+      const selBen = document.getElementById("sel-bendahara");
+      const prevPpk = selPpk.value;
+      const prevBen = selBen.value;
+
+      selPpk.innerHTML = `<option value="">-- Pilih PPK --</option>`;
+      (pejabatData.ppkList || []).forEach((p, idx) => {
+        selPpk.innerHTML += `<option value="${idx}">${escapeHtml(p.nama)}</option>`;
+      });
+
+      selBen.innerHTML = `<option value="">-- Pilih Bendahara --</option>`;
+      (pejabatData.bendaharaList || []).forEach((b, idx) => {
+        selBen.innerHTML += `<option value="${idx}">${escapeHtml(b.nama)}</option>`;
+      });
+
+      if (prevPpk !== "" && pejabatData.ppkList[prevPpk]) {
+        selPpk.value = prevPpk;
+        onSelectPejabat("ppk");
+      } else if (pejabatData.ppkList.length > 0) {
+        selPpk.value = "0";
+        onSelectPejabat("ppk");
+      }
+
+      if (prevBen !== "" && pejabatData.bendaharaList[prevBen]) {
+        selBen.value = prevBen;
+        onSelectPejabat("bendahara");
+      } else if (pejabatData.bendaharaList.length > 0) {
+        selBen.value = "0";
+        onSelectPejabat("bendahara");
+      }
+    }
+
+    function onSelectPejabat(type) {
+      if (type === "ppk") {
+        const idx = document.getElementById("sel-ppk").value;
+        const obj = idx !== "" ? pejabatData.ppkList[Number(idx)] : null;
+        document.getElementById("inp-nip-ppk").value = obj ? obj.nip : "";
+      } else {
+        const idx = document.getElementById("sel-bendahara").value;
+        const obj = idx !== "" ? pejabatData.bendaharaList[Number(idx)] : null;
+        document.getElementById("inp-nip-bendahara").value = obj ? obj.nip : "";
+      }
+    }
+
+    /**
+     * PERHITUNGAN LAMA PERJALANAN & SATUAN VOLUME
+     */
+    function getTripDurationDays() {
+      const s = document.getElementById("inp-tgl-berangkat").value;
+      const e = document.getElementById("inp-tgl-kembali").value;
+      if (!s || !e) return 1;
+      const d1 = new Date(s + "T00:00:00");
+      const d2 = new Date(e + "T00:00:00");
+      const diff = Math.round((d2 - d1) / (1000 * 60 * 60 * 24)) + 1;
+      return diff >= 1 ? diff : 1;
+    }
+
+    function recalculateTripDays() {
+      const days = getTripDurationDays();
+      document.getElementById("badge-lama-hari").textContent = "Lama Perjalanan: " + days + " Hari";
+      renderPelaksanaCards();
+    }
+
+    function getUnitLabelForCategory(kategori) {
+      if (kategori === "Uang Harian") return "hari";
+      if (kategori === "Penginapan") return "mlm";
+      return "kali";
+    }
+
+    /**
+     * MANAJEMEN FORM PELAKSANA & ITEM RINCIAN BIAYA (BAGIAN B)
+     */
+    function resetFormToDefault() {
+      activeDraftId = "";
+      const todayIso = new Date().toISOString().split("T")[0];
+      document.getElementById("inp-no-st").value = "";
+      document.getElementById("inp-tgl-st").value = todayIso;
+      document.getElementById("inp-kode-mak").value = "";
+      document.getElementById("inp-no-spd").value = "";
+      document.getElementById("inp-tgl-spd").value = todayIso;
+      document.getElementById("inp-tgl-dokumen").value = todayIso;
+      document.getElementById("inp-kegiatan").value = "";
+      document.getElementById("inp-kota-asal").value = satkerProfile.kotaKedudukan || "Pamekasan";
+      document.getElementById("inp-kota-tujuan").value = "";
+      document.getElementById("inp-tgl-berangkat").value = todayIso;
+      document.getElementById("inp-tgl-kembali").value = todayIso;
+      document.getElementById("inp-no-bukti").value = "";
+
+      pelaksanaList = [
+        {
+          nip: currentUser ? currentUser.nip : "",
+          nama: currentUser ? currentUser.nama : "",
+          pangkat: currentUser ? currentUser.pangkat : "",
+          jabatan: currentUser ? currentUser.jabatan : "",
+          items: [
+            { kategori: "Uang Harian", uraian: "Uang Harian Perjalanan Dinas", vol: 1, harga: 0, statusBukti: "" }
+          ]
+        }
+      ];
+
+      nominatifColumns = {
+        "Uang Harian": true,
+        "Transport PP": false,
+        "Darat/Taxi": false,
+        "Penginapan": false,
+        "Representasi": false,
+        "Lain-lain": false
+      };
+
+      recalculateTripDays();
+      renderNominatifColumnsSelector();
+      updateTotalsAndValidationUI();
+    }
+
+    function generateRandom18DigitNip() {
+      let result = String(Math.floor(1 + Math.random() * 9));
+      for (let i = 1; i < 18; i++) {
+        result += String(Math.floor(Math.random() * 10));
+      }
+      return result;
+    }
+
+    function loadSampleData() {
+      // Pertahankan pilihan PPK & Bendahara yang telah diatur Admin
+      const preservedPpk = document.getElementById("sel-ppk").value;
+      const preservedBen = document.getElementById("sel-bendahara").value;
+
+      activeDraftId = "";
+      document.getElementById("inp-no-st").value = "CONTOH/ST-001/2026";
+      document.getElementById("inp-tgl-st").value = "2026-11-06";
+      document.getElementById("inp-kode-mak").value = "0000.XXX.001.051.A.524111";
+      document.getElementById("inp-no-spd").value = "CONTOH/SPD-001/2026";
+      document.getElementById("inp-tgl-spd").value = "2026-11-06";
+      document.getElementById("inp-tgl-dokumen").value = "2026-11-13";
+      document.getElementById("inp-kegiatan").value = "Melaksanakan Contoh Kegiatan Koordinasi dan Konsultasi Perjalanan Dinas Tahun 2026";
+      document.getElementById("inp-kota-asal").value = satkerProfile.kotaKedudukan || "Pamekasan";
+      document.getElementById("inp-kota-tujuan").value = "Jakarta Pusat";
+      document.getElementById("inp-tgl-berangkat").value = "2026-11-10";
+      document.getElementById("inp-tgl-kembali").value = "2026-11-12";
+      document.getElementById("inp-no-bukti").value = "";
+
+      if (preservedPpk !== "") {
+        document.getElementById("sel-ppk").value = preservedPpk;
+        onSelectPejabat("ppk");
+      }
+      if (preservedBen !== "") {
+        document.getElementById("sel-bendahara").value = preservedBen;
+        onSelectPejabat("bendahara");
+      }
+
+      pelaksanaList = [
+        {
+          nip: generateRandom18DigitNip(),
+          nama: "John Doe",
+          pangkat: "Golongan Fiktif",
+          jabatan: "Karakter Fiktif",
+          items: [
+            { kategori: "Transport PP", uraian: "Transportasi PP Kedudukan - Tujuan (Contoh)", vol: 1, harga: 1500000, statusBukti: "ada bukti" },
+            { kategori: "Penginapan", uraian: "Biaya Penginapan / Hotel (2 Malam)", vol: 2, harga: 650000, statusBukti: "ada bukti" },
+            { kategori: "Uang Harian", uraian: "Uang Harian Perjalanan Dinas", vol: 3, harga: 530000, statusBukti: "tidak ada bukti" }
+          ]
+        }
+      ];
+
+      nominatifColumns = {
+        "Uang Harian": true,
+        "Transport PP": true,
+        "Darat/Taxi": false,
+        "Penginapan": true,
+        "Representasi": false,
+        "Lain-lain": false
+      };
+
+      recalculateTripDays();
+      renderNominatifColumnsSelector();
+      updateTotalsAndValidationUI();
+      showToast("Contoh data simulasi karakter fiktif berhasil dimuat.", "info");
+    }
+
+    function addPelaksanaCard() {
+      const days = getTripDurationDays();
+      pelaksanaList.push({
+        nip: "",
+        nama: "",
+        pangkat: "",
+        jabatan: "",
+        items: [
+          { kategori: "Uang Harian", uraian: "Uang Harian Perjalanan Dinas", vol: days, harga: 0, statusBukti: "" }
+        ]
+      });
+      renderPelaksanaCards();
+      updateTotalsAndValidationUI();
+    }
+
+    function removePelaksanaCard(pIdx) {
+      if (pelaksanaList.length <= 1) {
+        showToast("Minimal harus terdapat 1 pelaksana perjalanan dinas.", "error");
+        return;
+      }
+      pelaksanaList.splice(pIdx, 1);
+      renderPelaksanaCards();
+      updateTotalsAndValidationUI();
+    }
+
+    function onSelectPegawaiFromDirectory(pIdx, selectedNip) {
+      const found = pegawaiDirectory.find((pg) => pg.nip === selectedNip);
+      if (found) {
+        pelaksanaList[pIdx].nip = found.nip;
+        pelaksanaList[pIdx].nama = found.nama;
+        pelaksanaList[pIdx].pangkat = found.pangkat;
+        pelaksanaList[pIdx].jabatan = found.jabatan;
+        renderPelaksanaCards();
+      }
+    }
+
+    function addExpenseItem(pIdx) {
+      pelaksanaList[pIdx].items.push({
+        kategori: "Darat/Taxi",
+        uraian: "",
+        vol: 1,
+        harga: 0,
+        statusBukti: ""
+      });
+      renderPelaksanaCards();
+      updateTotalsAndValidationUI();
+    }
+
+    function removeExpenseItem(pIdx, itemIdx) {
+      if (pelaksanaList[pIdx].items.length <= 1) {
+        showToast("Minimal harus terdapat 1 item biaya per pelaksana.", "error");
+        return;
+      }
+      pelaksanaList[pIdx].items.splice(itemIdx, 1);
+      renderPelaksanaCards();
+      updateTotalsAndValidationUI();
+    }
+
+    function updateExpenseField(pIdx, itemIdx, field, rawVal) {
+      const item = pelaksanaList[pIdx].items[itemIdx];
+      if (!item) return;
+
+      if (field === "vol" || field === "harga") {
+        item[field] = Math.max(0, Number(rawVal) || 0);
+      } else {
+        item[field] = rawVal;
+      }
+
+      if (field === "kategori") {
+        renderPelaksanaCards();
+      }
+      updateTotalsAndValidationUI();
+    }
+
+    function renderPelaksanaCards() {
+      const container = document.getElementById("pelaksana-list-container");
+      const maxDays = getTripDurationDays();
+      container.innerHTML = "";
+
+      pelaksanaList.forEach((p, pIdx) => {
+        const uhDays = p.items
+          .filter((it) => it.kategori === "Uang Harian")
+          .reduce((sum, it) => sum + (Number(it.vol) || 0), 0);
+        const isUhExceeded = uhDays > maxDays;
+        const hasMissingStatus = p.items.some((it) => !it.statusBukti);
+
+        const pegawaiOptions = pegawaiDirectory
+          .map((pg) => `<option value="${pg.nip}" ${pg.nip === p.nip ? "selected" : ""}>${escapeHtml(pg.nama)} (${pg.nip})</option>`)
+          .join("");
+
+        let itemsHtml = "";
+        p.items.forEach((it, iIdx) => {
+          const unitLabel = getUnitLabelForCategory(it.kategori);
+          const subtotal = (Number(it.vol) || 0) * (Number(it.harga) || 0);
+          const statusMissing = !it.statusBukti;
+          const uhRowError = it.kategori === "Uang Harian" && isUhExceeded;
+
+          const catOpts = EXPENSE_CATEGORIES.map(
+            (c) => `<option value="${c}" ${c === it.kategori ? "selected" : ""}>${c}</option>`
+          ).join("");
+
+          itemsHtml += `
+            <tr class="border-b border-slate-100">
+              <td class="p-2">
+                <select onchange="updateExpenseField(${pIdx}, ${iIdx}, 'kategori', this.value)"
+                  class="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-xs font-semibold">
+                  ${catOpts}
+                </select>
+              </td>
+              <td class="p-2">
+                <input type="text" value="${escapeAttr(it.uraian)}" placeholder="Uraian rincian biaya..."
+                  oninput="updateExpenseField(${pIdx}, ${iIdx}, 'uraian', this.value)"
+                  class="w-full rounded-lg border border-slate-300 px-2.5 py-2 text-xs" />
+              </td>
+              <td class="p-2 w-28">
+                <div class="flex items-center gap-1">
+                  <input type="number" min="1" value="${it.vol}"
+                    oninput="updateExpenseField(${pIdx}, ${iIdx}, 'vol', this.value)"
+                    class="w-16 rounded-lg border ${uhRowError ? "border-rose-500 bg-rose-50 text-rose-800 font-bold" : "border-slate-300"} px-2 py-2 text-xs text-center" />
+                  <span class="text-[11px] font-bold text-slate-500">${unitLabel}</span>
+                </div>
+              </td>
+              <td class="p-2 w-36">
+                <input type="number" min="0" step="100" value="${it.harga}"
+                  oninput="updateExpenseField(${pIdx}, ${iIdx}, 'harga', this.value)"
+                  class="w-full rounded-lg border border-slate-300 px-2.5 py-2 text-xs text-right font-mono-code" />
+              </td>
+              <td class="p-2 w-32 text-right font-mono-code text-xs font-bold text-slate-800" id="item-sub-${pIdx}-${iIdx}">
+                ${formatRp(subtotal)}
+              </td>
+              <td class="p-2 w-40">
+                <select onchange="updateExpenseField(${pIdx}, ${iIdx}, 'statusBukti', this.value); renderPelaksanaCards();"
+                  class="w-full rounded-lg border ${statusMissing ? "border-rose-500 bg-rose-50 text-rose-700 font-bold" : "border-slate-300 bg-white text-slate-800"} px-2 py-2 text-xs">
+                  <option value="" ${it.statusBukti === "" ? "selected" : ""}>-- Pilih Status --</option>
+                  <option value="ada bukti" ${it.statusBukti === "ada bukti" ? "selected" : ""}>ada bukti</option>
+                  <option value="tidak ada bukti" ${it.statusBukti === "tidak ada bukti" ? "selected" : ""}>tidak ada bukti</option>
+                </select>
+              </td>
+              <td class="p-2 w-10 text-center">
+                <button type="button" onclick="removeExpenseItem(${pIdx}, ${iIdx})" title="Hapus baris"
+                  class="w-7 h-7 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs">✕</button>
+              </td>
+            </tr>
+          `;
+        });
+
+        const cardHtml = `
+          <div class="rounded-2xl border border-slate-300 bg-slate-50/70 p-5 space-y-4">
+            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-3">
+              <div class="flex items-center gap-2.5">
+                <span class="w-7 h-7 rounded-lg bg-slate-900 text-white flex items-center justify-center text-xs font-extrabold">${pIdx + 1}</span>
+                <span class="text-sm font-extrabold text-slate-900">Pelaksana ${pIdx + 1}${p.nama ? ": " + escapeHtml(p.nama) : ""}</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <select onchange="onSelectPegawaiFromDirectory(${pIdx}, this.value)"
+                  class="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold max-w-xs">
+                  <option value="">-- Pilih Cepat dari Master Pegawai --</option>
+                  ${pegawaiOptions}
+                </select>
+                ${pelaksanaList.length > 1 ? `<button type="button" onclick="removePelaksanaCard(${pIdx})" class="px-3 py-1.5 rounded-xl bg-rose-100 text-rose-700 text-xs font-bold">Hapus Pelaksana</button>` : ""}
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+              <div>
+                <label class="block text-[11px] font-bold text-slate-600 mb-1">Nama Lengkap *</label>
+                <input type="text" value="${escapeAttr(p.nama)}" oninput="pelaksanaList[${pIdx}].nama = this.value"
+                  class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold" />
+              </div>
+              <div>
+                <label class="block text-[11px] font-bold text-slate-600 mb-1">NIP (18 Digit) *</label>
+                <input type="text" maxlength="18" value="${escapeAttr(p.nip)}" oninput="pelaksanaList[${pIdx}].nip = this.value"
+                  class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-mono-code" />
+              </div>
+              <div>
+                <label class="block text-[11px] font-bold text-slate-600 mb-1">Pangkat / Golongan</label>
+                <input type="text" value="${escapeAttr(p.pangkat)}" oninput="pelaksanaList[${pIdx}].pangkat = this.value"
+                  class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs" />
+              </div>
+              <div>
+                <label class="block text-[11px] font-bold text-slate-600 mb-1">Jabatan *</label>
+                <input type="text" value="${escapeAttr(p.jabatan)}" oninput="pelaksanaList[${pIdx}].jabatan = this.value"
+                  class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs" />
+              </div>
+            </div>
+
+            ${isUhExceeded ? `
+              <div class="rounded-xl bg-rose-50 border border-rose-300 px-3.5 py-2.5 text-xs font-bold text-rose-700">
+                Peringatan: Total volume Uang Harian (${uhDays} hari) melebihi lama perjalanan dinas (${maxDays} hari).
+              </div>
+            ` : ""}
+
+            ${hasMissingStatus ? `
+              <div class="rounded-xl bg-rose-50 border border-rose-300 px-3.5 py-2.5 text-xs font-bold text-rose-700">
+                Status Bukti belum dipilih pada item yang ditandai merah. Silakan pilih "ada bukti" atau "tidak ada bukti".
+              </div>
+            ` : ""}
+
+            <div class="overflow-x-auto bg-white rounded-xl border border-slate-200">
+              <table class="w-full text-left border-collapse">
+                <thead>
+                  <tr class="bg-slate-100 text-[11px] font-extrabold text-slate-700 uppercase">
+                    <th class="p-2.5">Kategori Biaya</th>
+                    <th class="p-2.5">Uraian Rincian</th>
+                    <th class="p-2.5">Volume</th>
+                    <th class="p-2.5 text-right">Harga Satuan</th>
+                    <th class="p-2.5 text-right">Jumlah</th>
+                    <th class="p-2.5">Status Bukti *</th>
+                    <th class="p-2.5"></th>
+                  </tr>
+                </thead>
+                <tbody>${itemsHtml}</tbody>
+              </table>
+            </div>
+
+            <div class="flex items-center justify-between pt-1">
+              <button type="button" onclick="addExpenseItem(${pIdx})"
+                class="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold">
+                + Tambah Item Biaya
+              </button>
+              <div class="text-right">
+                <span class="text-xs text-slate-500">Subtotal Pelaksana ${pIdx + 1}: </span>
+                <span id="pelaksana-sub-${pIdx}" class="text-sm font-extrabold text-slate-900">Rp 0</span>
+              </div>
+            </div>
+          </div>
+        `;
+        container.insertAdjacentHTML("beforeend", cardHtml);
+      });
+    }
+
+    /**
+     * BAGIAN C: VALIDASI DUA ARAH KOLOM NOMINATIF
+     */
+    function getCategoryTotalsAcrossAllPelaksana() {
+      const totals = {};
+      EXPENSE_CATEGORIES.forEach((c) => { totals[c] = 0; });
+      pelaksanaList.forEach((p) => {
+        (p.items || []).forEach((it) => {
+          const amt = (Number(it.vol) || 0) * (Number(it.harga) || 0);
+          totals[it.kategori] = (totals[it.kategori] || 0) + amt;
+        });
+      });
+      return totals;
+    }
+
+    function renderNominatifColumnsSelector() {
+      const grid = document.getElementById("nominatif-columns-grid");
+      const catTotals = getCategoryTotalsAcrossAllPelaksana();
+      grid.innerHTML = "";
+
+      EXPENSE_CATEGORIES.forEach((cat) => {
+        const checked = !!nominatifColumns[cat];
+        const hasAmount = (catTotals[cat] || 0) > 0;
+        const mismatchUnchecked = hasAmount && !checked;
+        const mismatchCheckedEmpty = !hasAmount && checked;
+        const hasError = mismatchUnchecked || mismatchCheckedEmpty;
+
+        grid.insertAdjacentHTML("beforeend", `
+          <label class="flex items-center gap-2.5 rounded-xl border ${hasError ? "border-rose-500 bg-rose-50 text-rose-800" : checked ? "border-blue-500 bg-blue-50/70 text-blue-900" : "border-slate-200 bg-slate-50 text-slate-700"} p-3 cursor-pointer text-xs font-bold transition">
+            <input type="checkbox" ${checked ? "checked" : ""} onchange="toggleNominatifColumn('${cat}', this.checked)"
+              class="w-4 h-4 rounded text-blue-600" />
+            <span>${cat}</span>
+          </label>
+        `);
+      });
+    }
+
+    function toggleNominatifColumn(cat, isChecked) {
+      nominatifColumns[cat] = isChecked;
+      updateTotalsAndValidationUI();
+    }
+
+    function autoFixNominatifColumns(mode) {
+      const catTotals = getCategoryTotalsAcrossAllPelaksana();
+      EXPENSE_CATEGORIES.forEach((cat) => {
+        const hasAmount = (catTotals[cat] || 0) > 0;
+        if (mode === "checkFilled" && hasAmount) {
+          nominatifColumns[cat] = true;
+        }
+        if (mode === "uncheckEmpty" && !hasAmount) {
+          nominatifColumns[cat] = false;
+        }
+      });
+      updateTotalsAndValidationUI();
+      showToast("Kolom Daftar Nominatif telah disinkronkan dengan rincian biaya.", "success");
+    }
+
+    function updateTotalsAndValidationUI() {
+      let grandTotal = 0;
+
+      pelaksanaList.forEach((p, pIdx) => {
+        let pTotal = 0;
+        (p.items || []).forEach((it, iIdx) => {
+          const sub = (Number(it.vol) || 0) * (Number(it.harga) || 0);
+          pTotal += sub;
+          const cell = document.getElementById(`item-sub-${pIdx}-${iIdx}`);
+          if (cell) cell.textContent = formatRp(sub);
+        });
+        grandTotal += pTotal;
+        const pSpan = document.getElementById(`pelaksana-sub-${pIdx}`);
+        if (pSpan) pSpan.textContent = formatRp(pTotal);
+      });
+
+      document.getElementById("footer-grand-total").textContent = formatRp(grandTotal);
+
+      const catTotals = getCategoryTotalsAcrossAllPelaksana();
+      const missingChecked = [];
+      const extraCheckedEmpty = [];
+
+      EXPENSE_CATEGORIES.forEach((cat) => {
+        const hasAmount = (catTotals[cat] || 0) > 0;
+        const checked = !!nominatifColumns[cat];
+        if (hasAmount && !checked) missingChecked.push(cat);
+        if (!hasAmount && checked) extraCheckedEmpty.push(cat);
+      });
+
+      const banner = document.getElementById("section-c-error-banner");
+      const btnFixFilled = document.getElementById("btn-fix-check-filled");
+      const btnFixEmpty = document.getElementById("btn-fix-uncheck-empty");
+
+      const msgs = [];
+      if (missingChecked.length > 0) {
+        msgs.push("Kategori biaya berikut terisi di Bagian B namun belum dicentang di Bagian C: " + missingChecked.join(", ") + ".");
+        btnFixFilled.classList.remove("hidden");
+      } else {
+        btnFixFilled.classList.add("hidden");
+      }
+
+      if (extraCheckedEmpty.length > 0) {
+        msgs.push("Kolom berikut masih tercentang di Bagian C padahal rincian biayanya kosong/Rp 0 di Bagian B: " + extraCheckedEmpty.join(", ") + ".");
+        btnFixEmpty.classList.remove("hidden");
+      } else {
+        btnFixEmpty.classList.add("hidden");
+      }
+
+      if (msgs.length > 0) {
+        banner.textContent = msgs.join(" ");
+        banner.classList.remove("hidden");
+      } else {
+        banner.classList.add("hidden");
+      }
+
+      renderNominatifColumnsSelector();
+    }
+
+    function validateAllBeforePreview(notifyUser) {
+      const requiredFields = [
+        { id: "inp-no-st", label: "Nomor Surat Tugas (ST)" },
+        { id: "inp-tgl-st", label: "Tanggal Surat Tugas" },
+        { id: "inp-kode-mak", label: "Kode Mata Anggaran (MAK)" },
+        { id: "inp-no-spd", label: "Nomor SPD" },
+        { id: "inp-tgl-spd", label: "Tanggal SPD" },
+        { id: "inp-tgl-dokumen", label: "Tanggal Dokumen / Kuitansi" },
+        { id: "inp-kegiatan", label: "Maksud Perjalanan Dinas" },
+        { id: "inp-kota-asal", label: "Tempat Berangkat" },
+        { id: "inp-kota-tujuan", label: "Tempat Tujuan" },
+        { id: "inp-tgl-berangkat", label: "Tanggal Berangkat" },
+        { id: "inp-tgl-kembali", label: "Tanggal Kembali" },
+        { id: "sel-ppk", label: "Pejabat Pembuat Komitmen (PPK)" },
+        { id: "sel-bendahara", label: "Bendahara Pengeluaran" }
+      ];
+
+      for (const f of requiredFields) {
+        const el = document.getElementById(f.id);
+        if (!el || !String(el.value || "").trim()) {
+          if (notifyUser) showToast("Kolom wajib belum diisi: " + f.label, "error");
+          return false;
+        }
+      }
+
+      const maxDays = getTripDurationDays();
+      let grandTotal = 0;
+
+      for (let i = 0; i < pelaksanaList.length; i++) {
+        const p = pelaksanaList[i];
+        if (!p.nama.trim() || !p.nip.trim()) {
+          if (notifyUser) showToast("Nama dan NIP Pelaksana " + (i + 1) + " wajib diisi.", "error");
+          return false;
+        }
+
+        let uhDays = 0;
+        for (let j = 0; j < p.items.length; j++) {
+          const it = p.items[j];
+          if (!it.statusBukti) {
+            if (notifyUser) showToast("Pilih Status Bukti pada semua item biaya Pelaksana " + (i + 1) + ".", "error");
+            renderPelaksanaCards();
+            return false;
+          }
+          if (it.kategori === "Uang Harian") {
+            uhDays += Number(it.vol) || 0;
+          }
+          grandTotal += (Number(it.vol) || 0) * (Number(it.harga) || 0);
+        }
+
+        if (uhDays > maxDays) {
+          if (notifyUser) showToast("Volume Uang Harian Pelaksana " + (i + 1) + " (" + uhDays + " hari) melebihi lama perjalanan (" + maxDays + " hari).", "error");
+          return false;
+        }
+      }
+
+      if (grandTotal <= 0) {
+        if (notifyUser) showToast("Total biaya perjalanan dinas harus lebih besar dari Rp 0.", "error");
+        return false;
+      }
+
+      const catTotals = getCategoryTotalsAcrossAllPelaksana();
+      for (const cat of EXPENSE_CATEGORIES) {
+        const hasAmount = (catTotals[cat] || 0) > 0;
+        const checked = !!nominatifColumns[cat];
+        if (hasAmount && !checked) {
+          if (notifyUser) showToast("Kategori '" + cat + "' belum dicentang pada Bagian C (Kolom Nominatif).", "error");
+          return false;
+        }
+        if (!hasAmount && checked) {
+          if (notifyUser) showToast("Hapus centang '" + cat + "' pada Bagian C karena rincian biayanya kosong.", "error");
+          return false;
+        }
+      }
+
+      return true;
+    }
+
+    /**
+     * RENDER 4 LEMBAR DOKUMEN PDF RESMI
+     */
+    function getFormSnapshot() {
+      const ppkIdx = document.getElementById("sel-ppk").value;
+      const benIdx = document.getElementById("sel-bendahara").value;
+      const ppkObj = ppkIdx !== "" ? pejabatData.ppkList[Number(ppkIdx)] : { nama: "", nip: "" };
+      const benObj = benIdx !== "" ? pejabatData.bendaharaList[Number(benIdx)] : { nama: "", nip: "" };
+
+      return {
+        draftId: activeDraftId,
+        general: {
+          noSt: document.getElementById("inp-no-st").value.trim(),
+          tglSt: document.getElementById("inp-tgl-st").value,
+          kodeMak: document.getElementById("inp-kode-mak").value.trim(),
+          noSpd: document.getElementById("inp-no-spd").value.trim(),
+          tglSpd: document.getElementById("inp-tgl-spd").value,
+          tglDokumen: document.getElementById("inp-tgl-dokumen").value,
+          kegiatan: document.getElementById("inp-kegiatan").value.trim(),
+          kotaAsal: document.getElementById("inp-kota-asal").value.trim(),
+          kotaTujuan: document.getElementById("inp-kota-tujuan").value.trim(),
+          tglBerangkat: document.getElementById("inp-tgl-berangkat").value,
+          tglKembali: document.getElementById("inp-tgl-kembali").value,
+          lamaHari: getTripDurationDays(),
+          noBukti: document.getElementById("inp-no-bukti").value.trim(),
+          namaPpk: ppkObj ? ppkObj.nama : "",
+          nipPpk: ppkObj ? ppkObj.nip : "",
+          namaBendahara: benObj ? benObj.nama : "",
+          nipBendahara: benObj ? benObj.nip : ""
+        },
+        pelaksanaList: JSON.parse(JSON.stringify(pelaksanaList)),
+        nominatifColumns: Object.assign({}, nominatifColumns)
+      };
+    }
+
+    function renderAllOfficialSheets() {
+      const snap = getFormSnapshot();
+      const g = snap.general;
+      const container = document.getElementById("preview-container");
+      const activeCols = EXPENSE_CATEGORIES.filter((c) => snap.nominatifColumns[c]);
+
+      const tahunAnggaran = g.tglDokumen ? g.tglDokumen.split("-")[0] : new Date().getFullYear();
+      const tglDokIndo = formatDateIndo(g.tglDokumen);
+      const tglStIndo = formatDateIndo(g.tglSt);
+      const tglSpdIndo = formatDateIndo(g.tglSpd);
+      const tglBerangkatIndo = formatDateIndo(g.tglBerangkat);
+      const tglKembaliIndo = formatDateIndo(g.tglKembali);
+      const kotaTitimangsa = g.kotaAsal || satkerProfile.kotaKedudukan || "Pamekasan";
+
+      let html = "";
+
+      // =========================================================================
+      // LEMBAR 1: DAFTAR NOMINATIF PERJALANAN DINAS (LANDSCAPE + LOGO KOP KIRI)
+      // =========================================================================
+      const colTotals = {};
+      activeCols.forEach((c) => { colTotals[c] = 0; });
+      let nomGrandTotal = 0;
+
+      let nomRowsHtml = "";
+      snap.pelaksanaList.forEach((p, idx) => {
+        const pCatSum = {};
+        activeCols.forEach((c) => { pCatSum[c] = 0; });
+        let pRowTotal = 0;
+
+        (p.items || []).forEach((it) => {
+          const amt = (Number(it.vol) || 0) * (Number(it.harga) || 0);
+          if (pCatSum.hasOwnProperty(it.kategori)) {
+            pCatSum[it.kategori] += amt;
+          }
+          pRowTotal += amt;
+        });
+
+        activeCols.forEach((c) => { colTotals[c] += pCatSum[c]; });
+        nomGrandTotal += pRowTotal;
+
+        const dynamicCells = activeCols
+          .map((c) => `<td style="text-align:right;">${pCatSum[c] > 0 ? formatNumber(pCatSum[c]) : "-"}</td>`)
+          .join("");
+
+        nomRowsHtml += `
+          <tr>
+            <td style="text-align:center;">${idx + 1}</td>
+            <td><strong>${escapeHtml(p.nama)}</strong><br/>NIP. ${escapeHtml(p.nip)}</td>
+            <td style="text-align:center;">${escapeHtml(p.pangkat || "-")}</td>
+            <td>${escapeHtml(p.jabatan || "-")}</td>
+            <td style="text-align:center;">${escapeHtml(g.kotaAsal)} - ${escapeHtml(g.kotaTujuan)}</td>
+            <td style="text-align:center;">${tglBerangkatIndo} s.d.<br/>${tglKembaliIndo}</td>
+            <td style="text-align:center;">${g.lamaHari} hari</td>
+            ${dynamicCells}
+            <td style="text-align:right;font-weight:bold;">${formatNumber(pRowTotal)}</td>
+            <td></td>
+          </tr>
+        `;
+      });
+
+      const dynamicHeaders = activeCols.map((c) => `<th>${escapeHtml(c)}<br/>(Rp)</th>`).join("");
+      const dynamicFooterTotals = activeCols
+        .map((c) => `<td style="text-align:right;font-weight:bold;">${formatNumber(colTotals[c])}</td>`)
+        .join("");
+
+      html += `
+        <div class="doc-sheet sheet-landscape">
+          <table style="width:100%;border-bottom:2.5px solid #000;padding-bottom:6px;margin-bottom:10px;">
+            <tr>
+              ${logoBase64 ? `<td style="width:68px;vertical-align:middle;"><img src="${logoBase64}" style="width:58px;height:58px;object-fit:contain;" /></td>` : ""}
+              <td style="text-align:left;vertical-align:middle;line-height:1.25;">
+                <div style="font-size:11pt;font-weight:bold;">${escapeHtml(satkerProfile.kopBaris1)}</div>
+                <div style="font-size:11pt;font-weight:bold;">${escapeHtml(satkerProfile.kopBaris2)}</div>
+                <div style="font-size:11pt;font-weight:bold;">${escapeHtml(satkerProfile.kopBaris3)}</div>
+                <div style="font-size:12pt;font-weight:bold;">${escapeHtml(satkerProfile.kopBaris4)}</div>
+                <div style="font-size:9pt;">${escapeHtml(satkerProfile.alamatSatker)} ${escapeHtml(satkerProfile.telpFax)}</div>
+              </td>
+            </tr>
+          </table>
+
+          <div style="text-align:center;margin-bottom:10px;">
+            <div style="font-size:12pt;font-weight:bold;text-decoration:underline;">DAFTAR NOMINATIF PERJALANAN DINAS</div>
+            <div style="font-size:10pt;margin-top:2px;">Sesuai Surat Tugas Nomor : ${escapeHtml(g.noSt)} Tanggal ${tglStIndo}</div>
+            <div style="font-size:10pt;">Kegiatan : ${escapeHtml(g.kegiatan)}</div>
+            <div style="font-size:10pt;">Kode Mata Anggaran : <strong>${escapeHtml(g.kodeMak)}</strong></div>
+          </div>
+
+          <table class="nominatif-table">
+            <thead>
+              <tr>
+                <th style="width:26px;">No.</th>
+                <th>Nama / NIP</th>
+                <th>Pangkat / Gol.</th>
+                <th>Jabatan</th>
+                <th>Tujuan</th>
+                <th>Tanggal</th>
+                <th style="width:52px;">Lama</th>
+                ${dynamicHeaders}
+                <th>Jumlah<br/>(Rp)</th>
+                <th style="width:65px;">Ket.</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${nomRowsHtml}
+              <tr style="background:#f8fafc;">
+                <td colspan="7" style="text-align:center;font-weight:bold;">JUMLAH TOTAL</td>
+                ${dynamicFooterTotals}
+                <td style="text-align:right;font-weight:bold;">${formatNumber(nomGrandTotal)}</td>
+                <td></td>
+              </tr>
+              <tr>
+                <td colspan="${8 + activeCols.length}" style="font-style:italic;padding:5px 8px;">
+                  <strong>Terbilang :</strong> ${terbilangRupiah(nomGrandTotal)}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          <table style="width:100%;margin-top:18px;font-size:10pt;border-collapse:collapse;">
+            <tr>
+              <td style="width:50%;vertical-align:top;">
+                Mengetahui / Setuju Dibayar,<br/>
+                Pejabat Pembuat Komitmen
+              </td>
+              <td style="width:50%;vertical-align:top;padding-left:18%;">
+                ${escapeHtml(kotaTitimangsa)}, ${tglDokIndo}<br/>
+                Bendahara Pengeluaran,
+              </td>
+            </tr>
+            <tr>
+              <td style="padding-top:46px;vertical-align:bottom;">
+                <strong>${escapeHtml(g.namaPpk)}</strong><br/>
+                NIP. ${escapeHtml(g.nipPpk)}
+              </td>
+              <td style="padding-top:46px;padding-left:18%;vertical-align:bottom;">
+                <strong>${escapeHtml(g.namaBendahara)}</strong><br/>
+                NIP. ${escapeHtml(g.nipBendahara)}
+              </td>
+            </tr>
+          </table>
+        </div>
+      `;
+
+      // =========================================================================
+      // LEMBAR 2, 3, 4 PER PELAKSANA (PORTRAIT)
+      // =========================================================================
+      snap.pelaksanaList.forEach((p) => {
+        const pTotal = (p.items || []).reduce((acc, it) => acc + (Number(it.vol) || 0) * (Number(it.harga) || 0), 0);
+
+        // -----------------------------------------------------------------------
+        // LEMBAR 2: KUITANSI / BUKTI PEMBAYARAN (KOP TENGAH TANPA LOGO)
+        // -----------------------------------------------------------------------
+        html += `
+          <div class="doc-sheet sheet-portrait">
+            <div style="text-align:center;border-bottom:2.5px solid #000;padding-bottom:6px;margin-bottom:12px;line-height:1.25;">
+              <div style="font-size:11pt;font-weight:bold;">${escapeHtml(satkerProfile.kopBaris1)}</div>
+              <div style="font-size:11pt;font-weight:bold;">${escapeHtml(satkerProfile.kopBaris2)}</div>
+              <div style="font-size:11pt;font-weight:bold;">${escapeHtml(satkerProfile.kopBaris3)}</div>
+              <div style="font-size:12pt;font-weight:bold;">${escapeHtml(satkerProfile.kopBaris4)}</div>
+              <div style="font-size:9pt;">${escapeHtml(satkerProfile.alamatSatker)} ${escapeHtml(satkerProfile.telpFax)}</div>
+            </div>
+
+            <table style="margin-left:auto;font-size:10pt;margin-bottom:10px;">
+              <tr><td style="width:115px;">TA</td><td>: <strong>${tahunAnggaran}</strong></td></tr>
+              <tr><td>Nomor Bukti</td><td>: ${escapeHtml(g.noBukti)}</td></tr>
+              <tr><td>Mata Anggaran</td><td>: <strong>${escapeHtml(g.kodeMak)}</strong></td></tr>
+            </table>
+
+            <div style="text-align:center;font-size:13pt;font-weight:bold;text-decoration:underline;margin:14px 0 18px 0;">
+              KUITANSI / BUKTI PEMBAYARAN
+            </div>
+
+            <table style="width:100%;font-size:11pt;line-height:1.45;border-collapse:collapse;">
+              <tr>
+                <td style="width:145px;vertical-align:top;padding:4px 0;">Sudah terima dari</td>
+                <td style="width:15px;vertical-align:top;padding:4px 0;">:</td>
+                <td style="vertical-align:top;padding:4px 0;">Kuasa Pengguna Anggaran/Pejabat Pembuat Komitmen Satker ${escapeHtml(satkerProfile.namaSatker)}</td>
+              </tr>
+              <tr>
+                <td style="vertical-align:top;padding:4px 0;">Jumlah Uang</td>
+                <td style="vertical-align:top;padding:4px 0;">:</td>
+                <td style="vertical-align:top;padding:4px 0;"><strong>Rp &nbsp;&nbsp;${formatNumber(pTotal)}</strong></td>
+              </tr>
+              <tr>
+                <td style="vertical-align:top;padding:4px 0;">Terbilang</td>
+                <td style="vertical-align:top;padding:4px 0;">:</td>
+                <td style="vertical-align:top;padding:4px 0;font-style:italic;font-weight:bold;">${terbilangRupiah(pTotal)}</td>
+              </tr>
+              <tr>
+                <td style="vertical-align:top;padding:4px 0;">Untuk pembayaran</td>
+                <td style="vertical-align:top;padding:4px 0;">:</td>
+                <td style="vertical-align:top;padding:4px 0;text-align:justify;">
+                  Biaya Perjalanan Dinas sesuai dengan Surat Tugas No. ${escapeHtml(g.noSt)} Tanggal ${tglStIndo}
+                  dan Surat Perjalanan Dinas (SPD) No. ${escapeHtml(g.noSpd)} Tanggal ${tglSpdIndo}
+                  untuk ${escapeHtml(g.kegiatan)}
+                </td>
+              </tr>
+            </table>
+
+            <table style="width:100%;margin-top:26px;font-size:11pt;border-collapse:collapse;">
+              <tr>
+                <td style="width:52%;"></td>
+                <td style="width:48%;">
+                  ${escapeHtml(kotaTitimangsa)}, ${tglDokIndo}<br/>
+                  Penerima,
+                </td>
+              </tr>
+              <tr>
+                <td></td>
+                <td style="padding-top:52px;">
+                  <strong>${escapeHtml(p.nama)}</strong><br/>
+                  NIP. ${escapeHtml(p.nip)}
+                </td>
+              </tr>
+            </table>
+
+            <hr style="border:0;border-top:1.5px solid #000;margin:20px 0 14px 0;" />
+
+            <!-- BLOK TANDA TANGAN PPK & BENDAHARA SEJAJAR LURUS HORIZONTAL -->
+            <table style="width:100%;font-size:10.5pt;border-collapse:collapse;">
+              <tr>
+                <td style="width:52%;vertical-align:top;">
+                  Setuju dibebankan pada mata anggaran berkenaan,<br/>
+                  An. Kuasa Pengguna Anggaran<br/>
+                  Pejabat Pembuat Komitmen
+                </td>
+                <td style="width:48%;vertical-align:top;">
+                  Lunas dibayar Tgl ${tglDokIndo}<br/>
+                  Bendahara Pengeluaran
+                </td>
+              </tr>
+              <tr>
+                <td style="padding-top:52px;vertical-align:bottom;">
+                  <strong>${escapeHtml(g.namaPpk)}</strong><br/>
+                  NIP ${escapeHtml(g.nipPpk)}
+                </td>
+                <td style="padding-top:52px;vertical-align:bottom;">
+                  <strong>${escapeHtml(g.namaBendahara)}</strong><br/>
+                  NIP ${escapeHtml(g.nipBendahara)}
+                </td>
+              </tr>
+            </table>
+          </div>
+        `;
+
+        // -----------------------------------------------------------------------
+        // LEMBAR 3: RINCIAN BIAYA PERJALANAN DINAS (HEADER 2 BARIS RATA KIRI)
+        // -----------------------------------------------------------------------
+        const groupedRincian = [];
+        const groupMap = {};
+        (p.items || []).forEach((it) => {
+          if (!groupMap[it.kategori]) {
+            groupMap[it.kategori] = [];
+            groupedRincian.push({ kategori: it.kategori, rows: groupMap[it.kategori] });
+          }
+          groupMap[it.kategori].push(it);
+        });
+
+        let rincianRowsHtml = "";
+        groupedRincian.forEach((grp, gIdx) => {
+          rincianRowsHtml += `
+            <tr>
+              <td style="text-align:center;font-weight:bold;">${gIdx + 1}</td>
+              <td colspan="5" style="font-weight:bold;">${escapeHtml(grp.kategori)}</td>
+            </tr>
+          `;
+          grp.rows.forEach((it) => {
+            const unitLabel = getUnitLabelForCategory(it.kategori);
+            const sub = (Number(it.vol) || 0) * (Number(it.harga) || 0);
+            rincianRowsHtml += `
+              <tr>
+                <td></td>
+                <td style="padding-left:14px;">${escapeHtml(it.uraian || it.kategori)}</td>
+                <td style="text-align:center;white-space:nowrap;">${it.vol} ${unitLabel} @</td>
+                <td style="text-align:right;white-space:nowrap;">Rp &nbsp;${formatNumber(it.harga)}</td>
+                <td style="text-align:right;white-space:nowrap;">Rp &nbsp;${formatNumber(sub)}</td>
+                <td style="text-align:center;">${escapeHtml(it.statusBukti)}</td>
+              </tr>
+            `;
+          });
+        });
+
+        html += `
+          <div class="doc-sheet sheet-portrait">
+            <!-- HEADER 2 BARIS RATA KIRI TANPA LOGO / GARIS -->
+            <div style="text-align:left;line-height:1.25;margin-bottom:14px;">
+              <div style="font-size:10.5pt;font-weight:bold;">${formatTitleCaseMinistry(satkerProfile.kopBaris1)}</div>
+              <div style="font-size:11pt;font-weight:bold;">${escapeHtml(satkerProfile.kopBaris4)}</div>
+            </div>
+
+            <div style="text-align:center;font-size:12pt;font-weight:bold;text-decoration:underline;margin-bottom:14px;">
+              RINCIAN BIAYA PERJALANAN DINAS
+            </div>
+
+            <table style="font-size:10.5pt;margin-bottom:10px;">
+              <tr><td style="width:165px;">Lampiran SPD Nomor</td><td>: <strong>${escapeHtml(g.noSpd)}</strong></td></tr>
+              <tr><td>Tanggal</td><td>: ${tglSpdIndo}</td></tr>
+            </table>
+
+            <table class="official-table">
+              <thead>
+                <tr>
+                  <th style="width:28px;">No.</th>
+                  <th>Perincian Biaya</th>
+                  <th style="width:68px;">Volume</th>
+                  <th style="width:95px;">Harga Satuan</th>
+                  <th style="width:105px;">Jumlah</th>
+                  <th style="width:92px;">Keterangan</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rincianRowsHtml}
+                <tr>
+                  <td></td>
+                  <td colspan="3" style="text-align:center;font-weight:bold;">JUMLAH</td>
+                  <td style="text-align:right;font-weight:bold;white-space:nowrap;">Rp &nbsp;${formatNumber(pTotal)}</td>
+                  <td></td>
+                </tr>
+                <tr>
+                  <td></td>
+                  <td colspan="5" style="font-style:italic;"><strong>Terbilang :</strong> ${terbilangRupiah(pTotal)}</td>
+                </tr>
+              </tbody>
+            </table>
+
+            <table style="width:100%;margin-top:16px;font-size:10.5pt;border-collapse:collapse;">
+              <tr>
+                <td style="width:52%;vertical-align:top;">
+                  Telah dibayar sejumlah :<br/>
+                  <strong>Rp &nbsp;&nbsp;${formatNumber(pTotal)}</strong><br/>
+                  Bendahara Pengeluaran
+                </td>
+                <td style="width:48%;vertical-align:top;">
+                  ${escapeHtml(kotaTitimangsa)}, ${tglDokIndo}<br/>
+                  Telah menerima jumlah uang sebesar :<br/>
+                  <strong>Rp &nbsp;&nbsp;${formatNumber(pTotal)}</strong><br/>
+                  Yang Menerima,
+                </td>
+              </tr>
+              <tr>
+                <td style="padding-top:46px;vertical-align:bottom;">
+                  <strong>${escapeHtml(g.namaBendahara)}</strong><br/>
+                  NIP. ${escapeHtml(g.nipBendahara)}
+                </td>
+                <td style="padding-top:46px;vertical-align:bottom;">
+                  <strong>${escapeHtml(p.nama)}</strong><br/>
+                  NIP. ${escapeHtml(p.nip)}
+                </td>
+              </tr>
+            </table>
+
+            <hr style="border:0;border-top:1.5px solid #000;margin:16px 0 10px 0;" />
+
+            <div style="text-align:center;font-size:11pt;font-weight:bold;margin-bottom:10px;">
+              PERHITUNGAN SPPD RAMPUNG
+            </div>
+
+            <table style="width:100%;font-size:10.5pt;border-collapse:collapse;">
+              <tr>
+                <td style="width:52%;vertical-align:top;">
+                  <table style="width:92%;border-collapse:collapse;">
+                    <tr>
+                      <td style="padding:2px 0;">Ditetapkan sejumlah</td>
+                      <td>: <strong>Rp &nbsp;${formatNumber(pTotal)},00</strong></td>
+                    </tr>
+                    <tr>
+                      <td style="padding:2px 0;border-bottom:1px solid #000;">Yang telah dibayar semula</td>
+                      <td style="border-bottom:1px solid #000;">: Rp &nbsp;${formatNumber(pTotal)},00</td>
+                    </tr>
+                    <tr>
+                      <td style="padding:3px 0;">Sisa kurang/lebih</td>
+                      <td>: <strong>Rp &nbsp;-</strong></td>
+                    </tr>
+                  </table>
+                </td>
+                <td style="width:48%;vertical-align:top;">
+                  Pejabat Pembuat Komitmen,<br/><br/><br/><br/>
+                  <strong>${escapeHtml(g.namaPpk)}</strong><br/>
+                  NIP. ${escapeHtml(g.nipPpk)}
+                </td>
+              </tr>
+            </table>
+          </div>
+        `;
+
+        // -----------------------------------------------------------------------
+        // LEMBAR 4: DAFTAR PENGELUARAN RIIL (TANPA HEADER INSTANSI + URUTAN DINAMIS)
+        // -----------------------------------------------------------------------
+        const riilItems = (p.items || []).filter((it) => it.statusBukti === "tidak ada bukti");
+        const riilGroups = [];
+        const riilMap = {};
+        let riilTotal = 0;
+
+        riilItems.forEach((it) => {
+          if (!riilMap[it.kategori]) {
+            riilMap[it.kategori] = [];
+            riilGroups.push({ kategori: it.kategori, rows: riilMap[it.kategori] });
+          }
+          riilMap[it.kategori].push(it);
+          riilTotal += (Number(it.vol) || 0) * (Number(it.harga) || 0);
+        });
+
+        let riilRowsHtml = "";
+        if (riilGroups.length === 0) {
+          riilRowsHtml = `
+            <tr>
+              <td style="text-align:center;">-</td>
+              <td colspan="3" style="text-align:center;font-style:italic;">Tidak ada pengeluaran tanpa bukti</td>
+              <td style="text-align:right;">Rp &nbsp;0</td>
+            </tr>
+          `;
+        } else {
+          riilGroups.forEach((grp, idx) => {
+            if (grp.rows.length === 1 && grp.kategori === "Uang Harian") {
+              const single = grp.rows[0];
+              const sub = (Number(single.vol) || 0) * (Number(single.harga) || 0);
+              riilRowsHtml += `
+                <tr>
+                  <td style="text-align:center;font-weight:bold;">${idx + 1}</td>
+                  <td style="font-weight:bold;">${escapeHtml(grp.kategori)}</td>
+                  <td style="text-align:center;white-space:nowrap;">${single.vol} ${getUnitLabelForCategory(single.kategori)} @</td>
+                  <td style="text-align:right;white-space:nowrap;">Rp &nbsp;${formatNumber(single.harga)}</td>
+                  <td style="text-align:right;white-space:nowrap;">Rp &nbsp;${formatNumber(sub)}</td>
+                </tr>
+              `;
+            } else {
+              riilRowsHtml += `
+                <tr>
+                  <td style="text-align:center;font-weight:bold;">${idx + 1}</td>
+                  <td colspan="4" style="font-weight:bold;">${escapeHtml(grp.kategori)}</td>
+                </tr>
+              `;
+              grp.rows.forEach((it) => {
+                const unitLabel = getUnitLabelForCategory(it.kategori);
+                const sub = (Number(it.vol) || 0) * (Number(it.harga) || 0);
+                riilRowsHtml += `
+                  <tr>
+                    <td></td>
+                    <td style="padding-left:14px;">${escapeHtml(it.uraian || it.kategori)}</td>
+                    <td style="text-align:center;white-space:nowrap;">${it.vol} ${unitLabel} @</td>
+                    <td style="text-align:right;white-space:nowrap;">Rp &nbsp;${formatNumber(it.harga)}</td>
+                    <td style="text-align:right;white-space:nowrap;">Rp &nbsp;${formatNumber(sub)}</td>
+                  </tr>
+                `;
+              });
+            }
+          });
+        }
+
+        html += `
+          <div class="doc-sheet sheet-portrait">
+            <div style="text-align:center;font-size:12pt;font-weight:bold;text-decoration:underline;margin-bottom:18px;">
+              DAFTAR PENGELUARAN RIIL
+            </div>
+
+            <div style="font-size:11pt;margin-bottom:8px;">Yang bertanda tangan dibawah ini :</div>
+            <table style="font-size:11pt;margin-bottom:12px;">
+              <tr><td style="width:125px;">Nama</td><td>: <strong>${escapeHtml(p.nama)}</strong></td></tr>
+              <tr><td>NIP</td><td>: ${escapeHtml(p.nip)}</td></tr>
+              <tr><td>Jabatan</td><td>: ${escapeHtml(p.jabatan)}</td></tr>
+            </table>
+
+            <p style="font-size:11pt;text-align:justify;line-height:1.45;margin-bottom:10px;">
+              Berdasarkan Surat Perjalanan Dinas (SPD) Nomor : ${escapeHtml(g.noSpd)} Tanggal ${tglSpdIndo}, dengan ini kami menyatakan dengan sesungguhnya bahwa:
+            </p>
+            <p style="font-size:11pt;text-align:justify;line-height:1.45;margin-bottom:10px;">
+              1. Biaya transport pegawai dan/atau biaya penginapan di bawah ini yang tidak dapat diperoleh bukti-bukti pengeluarannya, meliputi :
+            </p>
+
+            <table class="official-table">
+              <thead>
+                <tr>
+                  <th style="width:32px;">No.</th>
+                  <th colspan="3">Uraian</th>
+                  <th style="width:115px;">Jumlah</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${riilRowsHtml}
+                <tr>
+                  <td></td>
+                  <td colspan="3" style="text-align:center;font-weight:bold;">JUMLAH</td>
+                  <td style="text-align:right;font-weight:bold;white-space:nowrap;">Rp &nbsp;${formatNumber(riilTotal)}</td>
+                </tr>
+                <tr>
+                  <td></td>
+                  <td colspan="4" style="font-style:italic;"><strong>Terbilang :</strong> ${terbilangRupiah(riilTotal)}</td>
+                </tr>
+              </tbody>
+            </table>
+
+            <p style="font-size:11pt;text-align:justify;line-height:1.45;margin-top:12px;">
+              2. Jumlah uang tersebut pada angka 1 di atas benar-benar dikeluarkan untuk pelaksanaan Perjalanan Dinas dimaksud dan apabila dikemudian hari terdapat kelebihan atas pembayaran, kami bersedia untuk menyetorkan kelebihan tersebut ke Kas Negara.
+            </p>
+            <p style="font-size:11pt;line-height:1.45;margin-top:8px;">
+              Demikian pernyataan ini kami buat dengan sebenarnya, untuk dipergunakan sebagaimana mestinya.
+            </p>
+
+            <table style="width:100%;margin-top:24px;font-size:11pt;border-collapse:collapse;">
+              <tr>
+                <td style="width:52%;vertical-align:top;">
+                  Mengetahui/Menyetujui,<br/>
+                  Pejabat Pembuat Komitmen
+                </td>
+                <td style="width:48%;vertical-align:top;">
+                  ${escapeHtml(kotaTitimangsa)}, ${tglDokIndo}<br/>
+                  Pelaksana SPD,
+                </td>
+              </tr>
+              <tr>
+                <td style="padding-top:52px;vertical-align:bottom;">
+                  <strong>${escapeHtml(g.namaPpk)}</strong><br/>
+                  NIP. ${escapeHtml(g.nipPpk)}
+                </td>
+                <td style="padding-top:52px;vertical-align:bottom;">
+                  <strong>${escapeHtml(p.nama)}</strong><br/>
+                  NIP. ${escapeHtml(p.nip)}
+                </td>
+              </tr>
+            </table>
+          </div>
+        `;
+      });
+
+      container.innerHTML = html;
+    }
+
+    /**
+     * RIWAYAT & REKAP (SIMPAN, MUAT, HAPUS)
+     */
+    async function saveCurrentDraftToServer() {
+      const btn = document.getElementById("btn-save-draft");
+      btn.disabled = true;
+      btn.textContent = "Menyimpan...";
+
+      try {
+        const snap = getFormSnapshot();
+        snap.totalKeseluruhan = snap.pelaksanaList.reduce(
+          (sum, p) => sum + (p.items || []).reduce((s2, it) => s2 + (Number(it.vol) || 0) * (Number(it.harga) || 0), 0),
+          0
+        );
+
+        const res = await callGasApi("saveDraftAndRekap", { draftData: snap });
+        if (!res.success) throw new Error(res.message);
+
+        activeDraftId = res.draftId;
+        userDrafts = res.drafts || [];
+        renderHistoryList();
+        showToast(res.message, "success");
+      } catch (err) {
+        showToast(err.message, "error");
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Simpan ke Riwayat & Rekap";
+      }
+    }
+
+    async function refreshUserDrafts() {
+      try {
+        const res = await callGasApi("getPegawaiDrafts");
+        if (res && res.success) {
+          userDrafts = res.drafts || [];
+          renderHistoryList();
+        }
+      } catch (e) {
+        console.warn("Gagal memuat riwayat:", e.message);
+      }
+    }
+
+    function renderHistoryList() {
+      document.getElementById("history-count-badge").textContent = userDrafts.length + "/10";
+      const box = document.getElementById("history-list-box");
+
+      if (userDrafts.length === 0) {
+        box.innerHTML = `<div class="bg-white rounded-2xl border border-slate-200 p-8 text-center text-xs text-slate-500">Belum ada riwayat SPPD tersimpan.</div>`;
+        return;
+      }
+
+      box.innerHTML = userDrafts
+        .map(
+          (d, idx) => `
+          <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex flex-wrap items-center justify-between gap-4">
+            <div class="space-y-1">
+              <div class="flex items-center gap-2">
+                <span class="px-2 py-0.5 rounded bg-blue-50 text-blue-700 font-mono-code text-xs font-bold">${escapeHtml(d.noSt)}</span>
+                <span class="text-[11px] text-slate-400">Disimpan: ${escapeHtml(d.waktuSimpan)}</span>
+              </div>
+              <p class="text-sm font-bold text-slate-900">${escapeHtml(d.kegiatan)}</p>
+              <p class="text-xs text-slate-600">Tujuan: <strong>${escapeHtml(d.kotaTujuan)}</strong> &bull; Total: <strong class="text-emerald-700">${formatRp(d.totalBiaya)}</strong></p>
+            </div>
+            <div class="flex items-center gap-2">
+              <button type="button" onclick="loadDraftIntoForm(${idx})" class="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold">Muat &amp; Cetak</button>
+              <button type="button" onclick="deleteDraftById('${escapeAttr(d.draftId)}')" class="px-3 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold">Hapus</button>
+            </div>
+          </div>
+        `
+        )
+        .join("");
+    }
+
+    function loadDraftIntoForm(idx) {
+      const item = userDrafts[idx];
+      if (!item || !item.payload) return;
+
+      const d = item.payload;
+      const g = d.general;
+      activeDraftId = item.draftId;
+
+      document.getElementById("inp-no-st").value = g.noSt || "";
+      document.getElementById("inp-tgl-st").value = g.tglSt || "";
+      document.getElementById("inp-kode-mak").value = g.kodeMak || "";
+      document.getElementById("inp-no-spd").value = g.noSpd || "";
+      document.getElementById("inp-tgl-spd").value = g.tglSpd || "";
+      document.getElementById("inp-tgl-dokumen").value = g.tglDokumen || "";
+      document.getElementById("inp-kegiatan").value = g.kegiatan || "";
+      document.getElementById("inp-kota-asal").value = g.kotaAsal || "";
+      document.getElementById("inp-kota-tujuan").value = g.kotaTujuan || "";
+      document.getElementById("inp-tgl-berangkat").value = g.tglBerangkat || "";
+      document.getElementById("inp-tgl-kembali").value = g.tglKembali || "";
+      document.getElementById("inp-no-bukti").value = g.noBukti || "";
+
+      const ppkIndex = pejabatData.ppkList.findIndex((p) => p.nip === g.nipPpk || p.nama === g.namaPpk);
+      if (ppkIndex >= 0) {
+        document.getElementById("sel-ppk").value = String(ppkIndex);
+        onSelectPejabat("ppk");
+      }
+
+      const benIndex = pejabatData.bendaharaList.findIndex((b) => b.nip === g.nipBendahara || b.nama === g.namaBendahara);
+      if (benIndex >= 0) {
+        document.getElementById("sel-bendahara").value = String(benIndex);
+        onSelectPejabat("bendahara");
+      }
+
+      pelaksanaList = d.pelaksanaList || [];
+      nominatifColumns = Object.assign({}, d.nominatifColumns || nominatifColumns);
+
+      recalculateTripDays();
+      renderNominatifColumnsSelector();
+      updateTotalsAndValidationUI();
+      switchTab("preview");
+      showToast("Dokumen riwayat berhasil dimuat.", "success");
+    }
+
+    async function deleteDraftById(draftId) {
+      try {
+        const res = await callGasApi("deletePegawaiDraft", { draftId });
+        if (!res.success) throw new Error(res.message);
+        userDrafts = res.drafts || [];
+        renderHistoryList();
+        showToast("Riwayat dokumen dihapus.", "info");
+      } catch (err) {
+        showToast(err.message, "error");
+      }
+    }
+
+    /**
+     * PANEL ADMIN (PROFIL, LOGO, PEJABAT, PEGAWAI EXCEL, AKUN TERKUNCI & RESET DARURAT)
+     */
+    function populateAdminPanel() {
+      document.getElementById("adm-kop-1").value = satkerProfile.kopBaris1 || "";
+      document.getElementById("adm-kop-2").value = satkerProfile.kopBaris2 || "";
+      document.getElementById("adm-kop-3").value = satkerProfile.kopBaris3 || "";
+      document.getElementById("adm-kop-4").value = satkerProfile.kopBaris4 || "";
+      document.getElementById("adm-nama-satker").value = satkerProfile.namaSatker || "";
+      document.getElementById("adm-kota").value = satkerProfile.kotaKedudukan || "";
+      document.getElementById("adm-alamat").value = satkerProfile.alamatSatker || "";
+      document.getElementById("adm-telp").value = satkerProfile.telpFax || "";
+
+      renderAdminLogoPreviews();
+      renderAdminPejabatLists();
+      renderAdminResetRequests();
+      renderAdminAccountsTable();
+    }
+
+    function renderAdminLogoPreviews() {
+      const appPrev = document.getElementById("admin-preview-applogo");
+      const kopPrev = document.getElementById("admin-preview-koplogo");
+      appPrev.innerHTML = appLogoBase64 ? `<img src="${appLogoBase64}" class="w-full h-full object-contain bg-white p-1" />` : "Default";
+      kopPrev.innerHTML = logoBase64 ? `<img src="${logoBase64}" class="w-full h-full object-contain p-1" />` : "Logo Kop";
+    }
+
+    function handleLogoUpload(event, targetType) {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function (ev) {
+        const img = new Image();
+        img.onload = function () {
+          const maxDim = targetType === "appLogo" ? 160 : 220;
+          let w = img.width;
+          let h = img.height;
+          if (w > maxDim || h > maxDim) {
+            if (w > h) {
+              h = Math.round((h * maxDim) / w);
+              w = maxDim;
+            } else {
+              w = Math.round((w * maxDim) / h);
+              h = maxDim;
+            }
+          }
+          const canvas = document.createElement("canvas");
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, w, h);
+
+          const optimizedDataUrl = canvas.toDataURL("image/png");
+          if (targetType === "appLogo") appLogoBase64 = optimizedDataUrl;
+          else logoBase64 = optimizedDataUrl;
+
+          renderAdminLogoPreviews();
+          showToast("Gambar siap disimpan. Klik 'Simpan Profil & Logo'.", "info");
+        };
+        img.src = ev.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function resetAdminLogo(targetType) {
+      if (targetType === "appLogo") appLogoBase64 = "";
+      else logoBase64 = "";
+      renderAdminLogoPreviews();
+    }
+
+    async function saveProfileAndLogosFromAdmin() {
+      const btn = document.getElementById("btn-admin-save-profile");
+      btn.disabled = true;
+      btn.textContent = "Menyimpan...";
+
+      try {
+        const updatedProfile = {
+          kopBaris1: document.getElementById("adm-kop-1").value.trim(),
+          kopBaris2: document.getElementById("adm-kop-2").value.trim(),
+          kopBaris3: document.getElementById("adm-kop-3").value.trim(),
+          kopBaris4: document.getElementById("adm-kop-4").value.trim(),
+          namaSatker: document.getElementById("adm-nama-satker").value.trim(),
+          kotaKedudukan: document.getElementById("adm-kota").value.trim(),
+          alamatSatker: document.getElementById("adm-alamat").value.trim(),
+          telpFax: document.getElementById("adm-telp").value.trim()
+        };
+
+        const res = await callGasApi("saveSatkerProfileAndLogos", {
+          profile: updatedProfile,
+          logoBase64: logoBase64,
+          appLogoBase64: appLogoBase64
+        });
+        if (!res.success) throw new Error(res.message);
+
+        satkerProfile = Object.assign(satkerProfile, updatedProfile);
+        applyBrandingToUI();
+        showToast(res.message, "success");
+      } catch (err) {
+        showToast("Gagal menyimpan profil: " + err.message, "error");
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Simpan Profil & Logo";
+      }
+    }
+
+    function renderAdminPejabatLists() {
+      const ppkBox = document.getElementById("admin-ppk-list");
+      const benBox = document.getElementById("admin-bendahara-list");
+
+      ppkBox.innerHTML = (pejabatData.ppkList || [])
+        .map(
+          (p, i) => `
+          <div class="bg-white rounded-xl border border-blue-200 p-2.5 flex items-center gap-2">
+            <div class="flex-1 space-y-1.5">
+              <input type="text" value="${escapeAttr(p.nama)}" placeholder="Nama PPK"
+                oninput="pejabatData.ppkList[${i}].nama = this.value"
+                class="w-full rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs font-semibold" />
+              <input type="text" maxlength="18" value="${escapeAttr(p.nip)}" placeholder="NIP PPK (18 digit)"
+                oninput="pejabatData.ppkList[${i}].nip = this.value"
+                class="w-full rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs font-mono-code" />
+            </div>
+            <button type="button" onclick="pejabatData.ppkList.splice(${i},1); renderAdminPejabatLists();" class="text-rose-600 font-bold text-xs px-2">✕</button>
+          </div>
+        `
+        )
+        .join("");
+
+      benBox.innerHTML = (pejabatData.bendaharaList || [])
+        .map(
+          (b, i) => `
+          <div class="bg-white rounded-xl border border-emerald-200 p-2.5 flex items-center gap-2">
+            <div class="flex-1 space-y-1.5">
+              <input type="text" value="${escapeAttr(b.nama)}" placeholder="Nama Bendahara"
+                oninput="pejabatData.bendaharaList[${i}].nama = this.value"
+                class="w-full rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs font-semibold" />
+              <input type="text" maxlength="18" value="${escapeAttr(b.nip)}" placeholder="NIP Bendahara (18 digit)"
+                oninput="pejabatData.bendaharaList[${i}].nip = this.value"
+                class="w-full rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs font-mono-code" />
+            </div>
+            <button type="button" onclick="pejabatData.bendaharaList.splice(${i},1); renderAdminPejabatLists();" class="text-rose-600 font-bold text-xs px-2">✕</button>
+          </div>
+        `
+        )
+        .join("");
+    }
+
+    function addAdminPejabatRow(role) {
+      if (role === "ppk") pejabatData.ppkList.push({ nama: "", nip: "" });
+      else pejabatData.bendaharaList.push({ nama: "", nip: "" });
+      renderAdminPejabatLists();
+    }
+
+    async function savePejabatFromAdmin() {
+      try {
+        const res = await callGasApi("saveSatkerPejabat", {
+          ppkList: pejabatData.ppkList,
+          bendaharaList: pejabatData.bendaharaList
+        });
+        if (!res.success) throw new Error(res.message);
+        populatePejabatDropdowns();
+        showToast(res.message, "success");
+      } catch (err) {
+        showToast(err.message, "error");
+      }
+    }
+
+    function downloadPegawaiExcelTemplate() {
+      const wsData = [
+        ["NIP", "Nama_Lengkap", "Pangkat_Golongan", "Jabatan", "Role", "Status_Aktif"],
+        ["999000000000000001", "John Doe", "Golongan Fiktif", "Karakter Fiktif", "ADMIN", "AKTIF"],
+        ["999000000000000002", "Jane Doe", "Golongan Fiktif", "Karakter Fiktif", "PEGAWAI", "AKTIF"]
+      ];
+      const ws = XLSX.utils.aoa_to_sheet(wsData);
+      ["A2", "A3"].forEach((ref) => {
+        if (ws[ref]) ws[ref].z = "@";
+      });
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Master_Pegawai");
+      XLSX.writeFile(wb, "Template_Pegawai_TRAVERSE.xlsx");
+    }
+
+    function handlePegawaiBatchUpload(event) {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = async function (ev) {
+        try {
+          const data = new Uint8Array(ev.target.result);
+          const workbook = XLSX.read(data, { type: "array" });
+          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+          const jsonRows = XLSX.utils.sheet_to_json(firstSheet, { raw: false, defval: "" });
+
+          const res = await callGasApi("uploadPegawaiBatch", { rows: jsonRows });
+          if (!res.success) throw new Error(res.message);
+          adminAccounts = res.adminAccounts || adminAccounts;
+          pendingResets = res.pendingResets || pendingResets;
+          renderAdminAccountsTable();
+          showToast(res.message, "success");
+        } catch (err) {
+          showToast("Gagal mengunggah database pegawai: " + err.message, "error");
+        } finally {
+          event.target.value = "";
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    async function refreshAdminAccountsAndResets() {
+      try {
+        const res = await callGasApi("getAdminAccountsAndResets");
+        if (res && res.success) {
+          adminAccounts = res.adminAccounts || [];
+          pendingResets = res.pendingResets || [];
+          renderAdminResetRequests();
+          renderAdminAccountsTable();
+          showToast("Daftar akun diperbarui.", "info");
+        }
+      } catch (e) {
+        showToast(e.message, "error");
+      }
+    }
+
+    function renderAdminResetRequests() {
+      const lockedCount = adminAccounts.filter((a) => a.status === "TERKUNCI").length;
+      const totalAlert = pendingResets.length + lockedCount;
+      const badge = document.getElementById("admin-reset-badge");
+      if (totalAlert > 0) {
+        badge.textContent = String(totalAlert);
+        badge.classList.remove("hidden");
+      } else {
+        badge.classList.add("hidden");
+      }
+
+      const box = document.getElementById("admin-reset-list");
+      if (pendingResets.length === 0) {
+        box.innerHTML = `<p class="text-xs text-slate-500">Tidak ada antrean permintaan reset password dari halaman login.</p>`;
+        return;
+      }
+
+      box.innerHTML = pendingResets
+        .map(
+          (r) => `
+          <div class="rounded-xl border border-amber-200 bg-amber-50/70 p-3.5 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p class="text-xs font-extrabold text-slate-900">${escapeHtml(r.nama)} <span class="font-mono-code font-normal text-slate-600">(NIP. ${escapeHtml(r.nip)})</span></p>
+              <p class="text-[11px] text-slate-500">Waktu permintaan: ${escapeHtml(r.waktu)}</p>
+            </div>
+            <div class="flex gap-2">
+              <button type="button" onclick="adminEmergencyReset('${escapeAttr(r.nip)}')" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold">
+                Setujui (Buka Kunci &amp; Reset Standar)
+              </button>
+              <button type="button" onclick="adminRejectReset('${escapeAttr(r.nip)}')" class="px-3 py-1.5 rounded-lg bg-rose-100 hover:bg-rose-200 text-rose-700 text-xs font-bold">
+                Tolak
+              </button>
+            </div>
+          </div>
+        `
+        )
+        .join("");
+    }
+
+    function renderAdminAccountsTable() {
+      const tbody = document.getElementById("admin-accounts-tbody");
+      const query = String((document.getElementById("admin-account-search") || {}).value || "").toLowerCase().trim();
+
+      const filtered = adminAccounts.filter(
+        (acc) =>
+          !query ||
+          acc.nip.toLowerCase().includes(query) ||
+          acc.nama.toLowerCase().includes(query)
+      );
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-500">Tidak ada data akun pegawai yang cocok.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = filtered
+        .map((acc) => {
+          let badgeClass = "bg-emerald-100 text-emerald-800";
+          if (acc.status === "TERKUNCI") badgeClass = "bg-rose-100 text-rose-800 border border-rose-300";
+          else if (acc.status === "NONAKTIF") badgeClass = "bg-slate-200 text-slate-700";
+
+          const toggleBtn =
+            acc.status === "AKTIF"
+              ? `<button type="button" onclick="adminToggleStatus('${escapeAttr(acc.nip)}', 'NONAKTIF')" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold">Nonaktifkan</button>`
+              : `<button type="button" onclick="adminToggleStatus('${escapeAttr(acc.nip)}', 'AKTIF')" class="px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold">Aktifkan</button>`;
+
+          return `
+            <tr class="${acc.status === "TERKUNCI" ? "bg-rose-50/50" : ""}">
+              <td class="p-2.5 font-mono-code font-semibold text-slate-800">${escapeHtml(acc.nip)}</td>
+              <td class="p-2.5 font-bold text-slate-900">${escapeHtml(acc.nama)}</td>
+              <td class="p-2.5">${escapeHtml(acc.role)}</td>
+              <td class="p-2.5"><span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold ${badgeClass}">${escapeHtml(acc.status)}</span></td>
+              <td class="p-2.5 text-right space-x-1.5">
+                <button type="button" onclick="adminEmergencyReset('${escapeAttr(acc.nip)}')"
+                  class="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-bold">
+                  Reset Password Darurat
+                </button>
+                ${toggleBtn}
+              </td>
+            </tr>
+          `;
+        })
+        .join("");
+    }
+
+    async function adminEmergencyReset(nip) {
+      try {
+        const res = await callGasApi("adminEmergencyResetUser", { nip });
+        if (!res.success) throw new Error(res.message);
+        adminAccounts = res.adminAccounts || [];
+        pendingResets = res.pendingResets || [];
+        renderAdminResetRequests();
+        renderAdminAccountsTable();
+        showToast(res.message, "success");
+      } catch (err) {
+        showToast(err.message, "error");
+      }
+    }
+
+    async function adminToggleStatus(nip, status) {
+      try {
+        const res = await callGasApi("adminSetUserStatus", { nip, status });
+        if (!res.success) throw new Error(res.message);
+        adminAccounts = res.adminAccounts || [];
+        pendingResets = res.pendingResets || [];
+        renderAdminResetRequests();
+        renderAdminAccountsTable();
+        showToast(res.message, "success");
+      } catch (err) {
+        showToast(err.message, "error");
+      }
+    }
+
+    async function adminRejectReset(nip) {
+      try {
+        const res = await callGasApi("rejectPasswordReset", { nip });
+        if (!res.success) throw new Error(res.message);
+        adminAccounts = res.adminAccounts || [];
+        pendingResets = res.pendingResets || [];
+        renderAdminResetRequests();
+        renderAdminAccountsTable();
+        showToast(res.message, "info");
+      } catch (err) {
+        showToast(err.message, "error");
+      }
+    }
+
+    /**
+     * UTILITY FORMATTER (ANGKA, TANGGAL INDONESIA, TERBILANG RUPIAH)
+     */
+    function formatNumber(n) {
+      return Math.round(Number(n) || 0).toLocaleString("id-ID");
+    }
+
+    function formatRp(n) {
+      return "Rp " + formatNumber(n);
+    }
+
+    function formatDateIndo(isoStr) {
+      if (!isoStr) return "-";
+      const parts = String(isoStr).split("-");
+      if (parts.length !== 3) return isoStr;
+      const bulan = [
+        "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+        "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+      ];
+      const idx = parseInt(parts[1], 10) - 1;
+      return `${parts[2]} ${bulan[idx] || parts[1]} ${parts[0]}`;
+    }
+
+    function formatTitleCaseMinistry(str) {
+      return String(str || "")
+        .toLowerCase()
+        .split(" ")
+        .map((w) => (w === "ri" ? "RI" : w === "dan" ? "dan" : w.charAt(0).toUpperCase() + w.slice(1)))
+        .join(" ");
+    }
+
+    function terbilangRupiah(nilai) {
+      const angka = Math.floor(Math.abs(Number(nilai) || 0));
+      if (angka === 0) return "Nol Rupiah";
+
+      const satuan = ["", "Satu", "Dua", "Tiga", "Empat", "Lima", "Enam", "Tujuh", "Delapan", "Sembilan", "Sepuluh", "Sebelas"];
+      function konversi(n) {
+        if (n < 12) return satuan[n];
+        if (n < 20) return konversi(n - 10) + " Belas";
+        if (n < 100) return konversi(Math.floor(n / 10)) + " Puluh " + konversi(n % 10);
+        if (n < 200) return "Seratus " + konversi(n - 100);
+        if (n < 1000) return konversi(Math.floor(n / 100)) + " Ratus " + konversi(n % 100);
+        if (n < 2000) return "Seribu " + konversi(n - 1000);
+        if (n < 1000000) return konversi(Math.floor(n / 1000)) + " Ribu " + konversi(n % 1000);
+        if (n < 1000000000) return konversi(Math.floor(n / 1000000)) + " Juta " + konversi(n % 1000000);
+        return konversi(Math.floor(n / 1000000000)) + " Miliar " + konversi(n % 1000000000);
+      }
+
+      return konversi(angka).replace(/\s+/g, " ").trim() + " Rupiah";
+    }
+
+    function escapeHtml(str) {
+      return String(str || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function escapeAttr(str) {
+      return escapeHtml(str).replace(/'/g, "&#39;");
+    }
+  </script>
 </body>
 </html>
