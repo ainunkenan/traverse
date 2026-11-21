@@ -24,13 +24,24 @@
     }
 
     /* Gaya Lembar Dokumen Resmi PDF */
-    .doc-sheet {
+   .doc-sheet {
       background: #ffffff;
       color: #000000;
       font-family: "Times New Roman", Times, serif;
       box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.14);
       margin: 0 auto 28px auto;
       box-sizing: border-box;
+      position: relative;
+    }
+    .sheet-footer {
+      position: absolute;
+      bottom: 6mm;
+      right: 14mm;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 7.5pt;
+      font-style: italic;
+      color: #64748b;
+      text-align: right;
     }
     .sheet-landscape {
       width: 297mm;
@@ -118,14 +129,18 @@
         overflow: visible !important;
         background: #ffffff !important;
       }
-      .doc-sheet {
+     .doc-sheet {
         box-shadow: none !important;
         margin: 0 !important;
-        padding: 2mm 2mm !important;
+        padding: 2mm 2mm 9mm 2mm !important;
         min-height: auto !important;
         box-sizing: border-box !important;
         page-break-after: always;
         break-after: page;
+      }
+      .sheet-footer {
+        bottom: 1mm !important;
+        right: 2mm !important;
       }
       .doc-sheet:last-child {
         page-break-after: auto;
@@ -1855,6 +1870,7 @@
     }
 
     function printOfficialPdf() {
+      renderAllOfficialSheets();
       const snap = getFormSnapshot();
       const fileName = buildPdfFileName(snap.general.noSt, snap.general.kegiatan);
       document.title = fileName;
@@ -1867,6 +1883,12 @@
       document.title = buildPdfFileName(g.noSt, g.kegiatan);
       const container = document.getElementById("preview-container");
       const activeCols = EXPENSE_CATEGORIES.filter((c) => snap.nominatifColumns[c]);
+
+      const creatorName = currentUser && currentUser.nama ? currentUser.nama : "Pegawai";
+      const nowObj = new Date();
+      const pad2 = (n) => String(n).padStart(2, "0");
+      const timestampStr = `${pad2(nowObj.getDate())}/${pad2(nowObj.getMonth() + 1)}/${nowObj.getFullYear()} ${pad2(nowObj.getHours())}:${pad2(nowObj.getMinutes())}:${pad2(nowObj.getSeconds())} WIB`;
+      const footerStampHtml = `<div class="sheet-footer">created with traverse - by ${escapeHtml(creatorName)} - ${timestampStr}</div>`;
 
       const tahunAnggaran = g.tglDokumen ? g.tglDokumen.split("-")[0] : new Date().getFullYear();
       const tglDokIndo = formatDateIndo(g.tglDokumen);
@@ -2006,6 +2028,7 @@
               </td>
             </tr>
           </table>
+          ${footerStampHtml}
         </div>
       `;
 
@@ -2110,6 +2133,7 @@
                 </td>
               </tr>
             </table>
+            ${footerStampHtml}
           </div>
         `;
 
@@ -2250,6 +2274,7 @@
                 </td>
               </tr>
             </table>
+            ${footerStampHtml}
           </div>
         `;
 
@@ -2391,6 +2416,7 @@
                 </td>
               </tr>
             </table>
+            ${footerStampHtml}
           </div>
         `;
       });
