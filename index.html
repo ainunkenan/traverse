@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 
-<style>
+  <style>
     body {
       font-family: 'Plus Jakarta Sans', sans-serif;
       background-color: #f1f5f9;
@@ -517,7 +517,7 @@
               class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow">
               Simpan ke Riwayat &amp; Rekap
             </button>
-           <button type="button" onclick="printOfficialPdf()"
+            <button type="button" onclick="printOfficialPdf()"
               class="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-extrabold shadow">
               Cetak / Simpan PDF
             </button>
@@ -726,7 +726,6 @@
     /**
      * ========================================================================
      * KONFIGURASI UTAMA API GOOGLE APPS SCRIPT
-     * Ganti nilai konstanta di bawah ini dengan URL Web App (/exec) Anda!
      * ========================================================================
      */
     const GAS_API_URL = "https://script.google.com/macros/s/AKfycbwsxiiQyKSwUHKHemYQAchA222E1Y7VXgI9hS8-aGhhtSxFHLJ6C9qmqtkvC9mDjkvKQg/exec";
@@ -1052,7 +1051,8 @@
      * NAVIGASI TAB
      */
     function switchTab(tabName) {
-    if (tabName === "preview") {
+      if (tabName === "preview") {
+        if (!validateAllBeforePreview(true)) return;
         renderAllOfficialSheets();
       } else {
         document.title = DEFAULT_APP_TITLE;
@@ -1148,6 +1148,7 @@
       const days = getTripDurationDays();
       document.getElementById("badge-lama-hari").textContent = "Lama Perjalanan: " + days + " Hari";
       renderPelaksanaCards();
+      updateTotalsAndValidationUI(true);
     }
 
     function getUnitLabelForCategory(kategori) {
@@ -1161,6 +1162,7 @@
      */
     function resetFormToDefault() {
       activeDraftId = "";
+      window._uhExceedState = {};
       const todayIso = new Date().toISOString().split("T")[0];
       document.getElementById("inp-no-st").value = "";
       document.getElementById("inp-tgl-st").value = todayIso;
@@ -1198,7 +1200,7 @@
 
       recalculateTripDays();
       renderNominatifColumnsSelector();
-      updateTotalsAndValidationUI();
+      updateTotalsAndValidationUI(false);
     }
 
     function generateRandom18DigitNip() {
@@ -1215,6 +1217,7 @@
       const preservedBen = document.getElementById("sel-bendahara").value;
 
       activeDraftId = "";
+      window._uhExceedState = {};
       document.getElementById("inp-no-st").value = "CONTOH/ST-001/2026";
       document.getElementById("inp-tgl-st").value = "2026-11-06";
       document.getElementById("inp-kode-mak").value = "0000.XXX.001.051.A.524111";
@@ -1262,7 +1265,7 @@
 
       recalculateTripDays();
       renderNominatifColumnsSelector();
-      updateTotalsAndValidationUI();
+      updateTotalsAndValidationUI(false);
       showToast("Contoh data simulasi karakter fiktif berhasil dimuat.", "info");
     }
 
@@ -1278,7 +1281,7 @@
         ]
       });
       renderPelaksanaCards();
-      updateTotalsAndValidationUI();
+      updateTotalsAndValidationUI(true);
     }
 
     function removePelaksanaCard(pIdx) {
@@ -1287,8 +1290,9 @@
         return;
       }
       pelaksanaList.splice(pIdx, 1);
+      window._uhExceedState = {};
       renderPelaksanaCards();
-      updateTotalsAndValidationUI();
+      updateTotalsAndValidationUI(false);
     }
 
     function onSelectPegawaiFromDirectory(pIdx, selectedNip) {
@@ -1299,6 +1303,7 @@
         pelaksanaList[pIdx].pangkat = found.pangkat;
         pelaksanaList[pIdx].jabatan = found.jabatan;
         renderPelaksanaCards();
+        updateTotalsAndValidationUI(false);
       }
     }
 
@@ -1311,7 +1316,7 @@
         statusBukti: ""
       });
       renderPelaksanaCards();
-      updateTotalsAndValidationUI();
+      updateTotalsAndValidationUI(true);
     }
 
     function removeExpenseItem(pIdx, itemIdx) {
@@ -1321,7 +1326,7 @@
       }
       pelaksanaList[pIdx].items.splice(itemIdx, 1);
       renderPelaksanaCards();
-      updateTotalsAndValidationUI();
+      updateTotalsAndValidationUI(false);
     }
 
     function updateExpenseField(pIdx, itemIdx, field, rawVal) {
@@ -1337,7 +1342,7 @@
       if (field === "kategori") {
         renderPelaksanaCards();
       }
-      updateTotalsAndValidationUI();
+      updateTotalsAndValidationUI(true);
     }
 
     function renderPelaksanaCards() {
@@ -1382,7 +1387,7 @@
               </td>
               <td class="p-2 w-28">
                 <div class="flex items-center gap-1">
-                  <input type="number" min="1" value="${it.vol}"
+                  <input type="number" min="1" id="item-vol-${pIdx}-${iIdx}" value="${it.vol}"
                     oninput="updateExpenseField(${pIdx}, ${iIdx}, 'vol', this.value)"
                     class="w-16 rounded-lg border ${uhRowError ? "border-rose-500 bg-rose-50 text-rose-800 font-bold" : "border-slate-300"} px-2 py-2 text-xs text-center" />
                   <span class="text-[11px] font-bold text-slate-500">${unitLabel}</span>
@@ -1397,11 +1402,12 @@
                 ${formatRp(subtotal)}
               </td>
               <td class="p-2 w-40">
-                <select onchange="updateExpenseField(${pIdx}, ${iIdx}, 'statusBukti', this.value); renderPelaksanaCards();"
+                <select onchange="updateExpenseField(${pIdx}, ${iIdx}, 'statusBukti', this.value); renderPelaksanaCards(); updateTotalsAndValidationUI(false);"
                   class="w-full rounded-lg border ${statusMissing ? "border-rose-500 bg-rose-50 text-rose-700 font-bold" : "border-slate-300 bg-white text-slate-800"} px-2 py-2 text-xs">
                   <option value="" ${it.statusBukti === "" ? "selected" : ""}>-- Pilih Status --</option>
                   <option value="ada bukti" ${it.statusBukti === "ada bukti" ? "selected" : ""}>ada bukti</option>
                   <option value="tidak ada bukti" ${it.statusBukti === "tidak ada bukti" ? "selected" : ""}>tidak ada bukti</option>
+                  <option value="lumpsum" ${it.statusBukti === "lumpsum" ? "selected" : ""}>lumpsum</option>
                 </select>
               </td>
               <td class="p-2 w-10 text-center">
@@ -1452,15 +1458,13 @@
               </div>
             </div>
 
-            ${isUhExceeded ? `
-              <div class="rounded-xl bg-rose-50 border border-rose-300 px-3.5 py-2.5 text-xs font-bold text-rose-700">
-                Peringatan: Total volume Uang Harian (${uhDays} hari) melebihi lama perjalanan dinas (${maxDays} hari).
-              </div>
-            ` : ""}
+            <div id="uh-warn-${pIdx}" class="${isUhExceeded ? "" : "hidden "}rounded-xl bg-rose-50 border border-rose-300 px-3.5 py-2.5 text-xs font-bold text-rose-700">
+              Peringatan: Total volume Uang Harian (${uhDays} hari) melebihi lama perjalanan dinas (${maxDays} hari).
+            </div>
 
             ${hasMissingStatus ? `
               <div class="rounded-xl bg-rose-50 border border-rose-300 px-3.5 py-2.5 text-xs font-bold text-rose-700">
-                Status Bukti belum dipilih pada item yang ditandai merah. Silakan pilih "ada bukti" atau "tidak ada bukti".
+                Status Bukti belum dipilih pada item yang ditandai merah. Silakan pilih "ada bukti", "tidak ada bukti", atau "lumpsum".
               </div>
             ` : ""}
 
@@ -1536,7 +1540,7 @@
 
     function toggleNominatifColumn(cat, isChecked) {
       nominatifColumns[cat] = isChecked;
-      updateTotalsAndValidationUI();
+      updateTotalsAndValidationUI(false);
     }
 
     function autoFixNominatifColumns(mode) {
@@ -1550,24 +1554,61 @@
           nominatifColumns[cat] = false;
         }
       });
-      updateTotalsAndValidationUI();
+      updateTotalsAndValidationUI(false);
       showToast("Kolom Daftar Nominatif telah disinkronkan dengan rincian biaya.", "success");
     }
 
-    function updateTotalsAndValidationUI() {
+    function updateTotalsAndValidationUI(notifyOnExceed = false) {
       let grandTotal = 0;
+      const maxDays = getTripDurationDays();
+      if (!window._uhExceedState) window._uhExceedState = {};
 
       pelaksanaList.forEach((p, pIdx) => {
         let pTotal = 0;
+        let uhDays = 0;
+
         (p.items || []).forEach((it, iIdx) => {
           const sub = (Number(it.vol) || 0) * (Number(it.harga) || 0);
           pTotal += sub;
+          if (it.kategori === "Uang Harian") {
+            uhDays += Number(it.vol) || 0;
+          }
           const cell = document.getElementById(`item-sub-${pIdx}-${iIdx}`);
           if (cell) cell.textContent = formatRp(sub);
         });
+
         grandTotal += pTotal;
         const pSpan = document.getElementById(`pelaksana-sub-${pIdx}`);
         if (pSpan) pSpan.textContent = formatRp(pTotal);
+
+        // Pembaruan real-time peringatan volume Uang Harian tanpa kehilangan fokus kursor
+        const isExceeded = uhDays > maxDays;
+        const warnEl = document.getElementById(`uh-warn-${pIdx}`);
+        if (warnEl) {
+          if (isExceeded) {
+            warnEl.textContent = `Peringatan: Total volume Uang Harian (${uhDays} hari) melebihi lama perjalanan dinas (${maxDays} hari).`;
+            warnEl.classList.remove("hidden");
+          } else {
+            warnEl.classList.add("hidden");
+          }
+        }
+
+        (p.items || []).forEach((it, iIdx) => {
+          const volInp = document.getElementById(`item-vol-${pIdx}-${iIdx}`);
+          if (!volInp) return;
+          if (it.kategori === "Uang Harian" && isExceeded) {
+            volInp.classList.remove("border-slate-300");
+            volInp.classList.add("border-rose-500", "bg-rose-50", "text-rose-800", "font-bold");
+          } else {
+            volInp.classList.remove("border-rose-500", "bg-rose-50", "text-rose-800", "font-bold");
+            volInp.classList.add("border-slate-300");
+          }
+        });
+
+        if (isExceeded && !window._uhExceedState[pIdx] && notifyOnExceed) {
+          showToast(`Peringatan: Volume Uang Harian Pelaksana ${pIdx + 1} (${uhDays} hari) melebihi lama kegiatan (${maxDays} hari)!`, "error");
+        }
+        window._uhExceedState[pIdx] = isExceeded;
       });
 
       document.getElementById("footer-grand-total").textContent = formatRp(grandTotal);
@@ -1724,7 +1765,7 @@
       };
     }
 
-   function getNominatifHeaderLabel(cat) {
+    function getNominatifHeaderLabel(cat) {
       const map = {
         "Uang Harian": "UANG HARIAN",
         "Transport PP": "TRANSPORTASI PP",
@@ -1736,7 +1777,7 @@
       return map[cat] || String(cat || "").toUpperCase();
     }
 
-  function formatRpCell(amount) {
+    function formatRpCell(amount) {
       const val = Number(amount) || 0;
       return `<div style="display:flex;justify-content:space-between;align-items:center;gap:3px;white-space:nowrap;"><span>Rp</span><span>${val > 0 ? formatNumber(val) : "-"}</span></div>`;
     }
@@ -1765,7 +1806,7 @@
       return `${p1[2]} ${b1} ${p1[0]} - ${p2[2]} ${b2} ${p2[0]}`;
     }
 
-const DEFAULT_APP_TITLE = "TRAVERSE — Every Mile Accounted For.";
+    const DEFAULT_APP_TITLE = "TRAVERSE — Every Mile Accounted For.";
 
     function buildPdfFileName(noSt, kegiatan) {
       const sanitizePart = (val, fallback) => {
@@ -1788,7 +1829,7 @@ const DEFAULT_APP_TITLE = "TRAVERSE — Every Mile Accounted For.";
       document.title = fileName;
       window.print();
     }
-    
+
     function renderAllOfficialSheets() {
       const snap = getFormSnapshot();
       const g = snap.general;
@@ -2181,9 +2222,11 @@ const DEFAULT_APP_TITLE = "TRAVERSE — Every Mile Accounted For.";
         `;
 
         // -----------------------------------------------------------------------
-        // LEMBAR 4: DAFTAR PENGELUARAN RIIL (TANPA HEADER INSTANSI + URUTAN DINAMIS)
+        // LEMBAR 4: DAFTAR PENGELUARAN RIIL (TANPA BUKTI + LUMPSUM)
         // -----------------------------------------------------------------------
-        const riilItems = (p.items || []).filter((it) => it.statusBukti === "tidak ada bukti");
+        const riilItems = (p.items || []).filter(
+          (it) => it.statusBukti === "tidak ada bukti" || it.statusBukti === "lumpsum"
+        );
         const riilGroups = [];
         const riilMap = {};
         let riilTotal = 0;
@@ -2202,7 +2245,7 @@ const DEFAULT_APP_TITLE = "TRAVERSE — Every Mile Accounted For.";
           riilRowsHtml = `
             <tr>
               <td style="text-align:center;">-</td>
-              <td colspan="3" style="text-align:center;font-style:italic;">Tidak ada pengeluaran tanpa bukti</td>
+              <td colspan="3" style="text-align:center;font-style:italic;">Tidak ada pengeluaran tanpa bukti / lumpsum</td>
               <td style="text-align:right;">Rp &nbsp;0</td>
             </tr>
           `;
@@ -2402,6 +2445,7 @@ const DEFAULT_APP_TITLE = "TRAVERSE — Every Mile Accounted For.";
       const d = item.payload;
       const g = d.general;
       activeDraftId = item.draftId;
+      window._uhExceedState = {};
 
       document.getElementById("inp-no-st").value = g.noSt || "";
       document.getElementById("inp-tgl-st").value = g.tglSt || "";
@@ -2433,7 +2477,7 @@ const DEFAULT_APP_TITLE = "TRAVERSE — Every Mile Accounted For.";
 
       recalculateTripDays();
       renderNominatifColumnsSelector();
-      updateTotalsAndValidationUI();
+      updateTotalsAndValidationUI(false);
       switchTab("preview");
       showToast("Dokumen riwayat berhasil dimuat.", "success");
     }
