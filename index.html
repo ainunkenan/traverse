@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 
- <style>
+<style>
     body {
       font-family: 'Plus Jakarta Sans', sans-serif;
       background-color: #f1f5f9;
@@ -63,12 +63,12 @@
     .nominatif-table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 8.5pt;
+      font-size: 8pt;
     }
     .nominatif-table th,
     .nominatif-table td {
       border: 1px solid #000000;
-      padding: 4px 6px;
+      padding: 3px 4px;
       vertical-align: middle;
     }
     .nominatif-table th {
@@ -77,32 +77,53 @@
       text-align: center;
     }
 
+    @page {
+      size: A4 portrait;
+      margin: 10mm 12mm;
+    }
+    @page landscapePage {
+      size: A4 landscape;
+      margin: 10mm 10mm;
+    }
+    @page portraitPage {
+      size: A4 portrait;
+      margin: 10mm 12mm;
+    }
+
     @media print {
-      @page {
-        margin: 10mm;
+      * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
       }
+      html,
       body {
+        width: 100% !important;
+        height: auto !important;
         background: #ffffff !important;
         margin: 0 !important;
         padding: 0 !important;
+        overflow: visible !important;
       }
       .no-print {
         display: none !important;
       }
-      #app-shell {
-        display: block !important;
-      }
+      #app-shell,
+      #tab-preview,
       #preview-container {
+        display: block !important;
+        width: 100% !important;
+        max-width: none !important;
         padding: 0 !important;
         margin: 0 !important;
+        overflow: visible !important;
         background: #ffffff !important;
       }
       .doc-sheet {
         box-shadow: none !important;
         margin: 0 !important;
-        padding: 3mm 4mm !important;
-        width: 100% !important;
+        padding: 2mm 2mm !important;
         min-height: auto !important;
+        box-sizing: border-box !important;
         page-break-after: always;
         break-after: page;
       }
@@ -112,18 +133,14 @@
       }
       .sheet-landscape {
         page: landscapePage;
+        width: 277mm !important;
+        max-width: 277mm !important;
       }
       .sheet-portrait {
         page: portraitPage;
+        width: 186mm !important;
+        max-width: 186mm !important;
       }
-    }
-    @page landscapePage {
-      size: A4 landscape;
-      margin: 10mm 8mm;
-    }
-    @page portraitPage {
-      size: A4 portrait;
-      margin: 10mm 12mm;
     }
   </style>
 </head>
@@ -500,7 +517,7 @@
               class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow">
               Simpan ke Riwayat &amp; Rekap
             </button>
-            <button type="button" onclick="window.print()"
+           <button type="button" onclick="printOfficialPdf()"
               class="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-extrabold shadow">
               Cetak / Simpan PDF
             </button>
@@ -1035,10 +1052,10 @@
      * NAVIGASI TAB
      */
     function switchTab(tabName) {
-      if (tabName === "preview") {
-        const valid = validateAllBeforePreview(true);
-        if (!valid) return;
+    if (tabName === "preview") {
         renderAllOfficialSheets();
+      } else {
+        document.title = DEFAULT_APP_TITLE;
       }
 
       ["input", "preview", "history", "admin"].forEach((t) => {
@@ -1719,9 +1736,9 @@
       return map[cat] || String(cat || "").toUpperCase();
     }
 
-    function formatRpCell(amount) {
+  function formatRpCell(amount) {
       const val = Number(amount) || 0;
-      return `<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;white-space:nowrap;"><span>Rp</span><span>${val > 0 ? formatNumber(val) : "-"}</span></div>`;
+      return `<div style="display:flex;justify-content:space-between;align-items:center;gap:3px;white-space:nowrap;"><span>Rp</span><span>${val > 0 ? formatNumber(val) : "-"}</span></div>`;
     }
 
     function formatDateRangeIndo(startIso, endIso) {
@@ -1748,9 +1765,34 @@
       return `${p1[2]} ${b1} ${p1[0]} - ${p2[2]} ${b2} ${p2[0]}`;
     }
 
+const DEFAULT_APP_TITLE = "TRAVERSE — Every Mile Accounted For.";
+
+    function buildPdfFileName(noSt, kegiatan) {
+      const sanitizePart = (val, fallback) => {
+        const cleaned = String(val || "")
+          .trim()
+          .replace(/[\/\\]+/g, "-")
+          .replace(/[:*?"<>|]+/g, "")
+          .replace(/\s+/g, " ")
+          .trim();
+        return cleaned || fallback;
+      };
+      const safeNoSt = sanitizePart(noSt, "Tanpa-No-ST");
+      const safeKegiatan = sanitizePart(kegiatan, "Perjalanan-Dinas");
+      return `traverse_sppdrampung_perjadin_${safeNoSt}_${safeKegiatan}`;
+    }
+
+    function printOfficialPdf() {
+      const snap = getFormSnapshot();
+      const fileName = buildPdfFileName(snap.general.noSt, snap.general.kegiatan);
+      document.title = fileName;
+      window.print();
+    }
+    
     function renderAllOfficialSheets() {
       const snap = getFormSnapshot();
       const g = snap.general;
+      document.title = buildPdfFileName(g.noSt, g.kegiatan);
       const container = document.getElementById("preview-container");
       const activeCols = EXPENSE_CATEGORIES.filter((c) => snap.nominatifColumns[c]);
 
