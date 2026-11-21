@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>TRAVERSE</title>
   <!-- Dynamic Favicon (Otomatis diperbarui dari Logo Aplikasi TRAVERSE) -->
-  <link id="dynamic-favicon" rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23059669'/%3E%3Cpath d='M18 22l10-4 8 4 10-4v24l-10 4-8-4-10 4V22zm10-4v24m8-20v24' stroke='%23ffffff' stroke-width='4' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E" />
+  <link id="dynamic-favicon" rel="icon" type="image/svg+xml" href="./logo traverse_3.png" />
 
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -183,10 +183,8 @@
     <div class="flex-1 flex items-center justify-center p-4">
       <div class="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden border border-slate-800">
         <div class="bg-slate-900 px-8 py-8 text-center text-white">
-          <div id="login-logo-wrap" class="mx-auto mb-3.5 w-16 h-16 rounded-2xl bg-emerald-600 flex items-center justify-center shadow-lg overflow-hidden">
-            <svg class="w-9 h-9 text-white" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-            </svg>
+          <div id="login-logo-wrap" class="mx-auto mb-3.5 w-16 h-16 rounded-2xl bg-white flex items-center justify-center shadow-lg overflow-hidden">
+            <img src="./logo traverse_3.png" alt="Logo TRAVERSE" class="w-full h-full object-contain p-1" />
           </div>
           <h1 class="text-2xl font-extrabold tracking-widest">TRAVERSE</h1>
           <p class="text-xs italic text-emerald-400 font-medium mt-1">Every Mile Accounted For.</p>
@@ -298,10 +296,8 @@
     <header class="no-print bg-slate-900 text-white shadow-lg border-b border-slate-800">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex flex-wrap items-center justify-between gap-4">
         <div class="flex items-center gap-3.5">
-          <div id="nav-logo-wrap" class="w-11 h-11 rounded-xl bg-emerald-600 flex items-center justify-center overflow-hidden shadow">
-            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-            </svg>
+          <div id="nav-logo-wrap" class="w-11 h-11 rounded-xl bg-white flex items-center justify-center overflow-hidden shadow">
+            <img src="./logo traverse_3.png" alt="Logo TRAVERSE" class="w-full h-full object-contain p-0.5" />
           </div>
           <div>
             <div class="flex items-center gap-2">
@@ -836,16 +832,13 @@
       }, 4500);
     }
 
+    const DEFAULT_APP_LOGO_URL = "./logo traverse_3.png";
+
     function updateFavicon(logoUrl) {
       const link = document.getElementById("dynamic-favicon");
       if (!link) return;
-      if (logoUrl) {
-        link.type = "image/png";
-        link.href = logoUrl;
-      } else {
-        link.type = "image/svg+xml";
-        link.href = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23059669'/%3E%3Cpath d='M18 22l10-4 8 4 10-4v24l-10 4-8-4-10 4V22zm10-4v24m8-20v24' stroke='%23ffffff' stroke-width='4' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E";
-      }
+      link.type = "image/png";
+      link.href = logoUrl || DEFAULT_APP_LOGO_URL;
     }
 
     function applyBrandingToUI() {
@@ -854,19 +847,14 @@
       const kotaAsal = document.getElementById("inp-kota-asal");
       if (kotaAsal) kotaAsal.value = satkerProfile.kotaKedudukan || "Pamekasan";
 
-      updateFavicon(appLogoBase64);
+      const activeLogo = appLogoBase64 || DEFAULT_APP_LOGO_URL;
+      updateFavicon(activeLogo);
 
-      const defaultSvg = `<svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" /></svg>`;
       const loginWrap = document.getElementById("login-logo-wrap");
       const navWrap = document.getElementById("nav-logo-wrap");
 
-      if (appLogoBase64) {
-        loginWrap.innerHTML = `<img src="${appLogoBase64}" class="w-full h-full object-contain bg-white p-1" />`;
-        navWrap.innerHTML = `<img src="${appLogoBase64}" class="w-full h-full object-contain bg-white p-0.5" />`;
-      } else {
-        loginWrap.innerHTML = defaultSvg;
-        navWrap.innerHTML = defaultSvg;
-      }
+      loginWrap.innerHTML = `<img src="${activeLogo}" alt="Logo TRAVERSE" class="w-full h-full object-contain bg-white p-1" />`;
+      navWrap.innerHTML = `<img src="${activeLogo}" alt="Logo TRAVERSE" class="w-full h-full object-contain bg-white p-0.5" />`;
     }
 
     function togglePasswordVisibility(inputId, btnEl) {
